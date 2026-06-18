@@ -1,0 +1,5 @@
+Nama     : Fina Faradilla
+NIM      : 230102051
+Prodi    : Teknik Informatika
+Angkatan : 2023
+GitHub   : fina-faradilla
