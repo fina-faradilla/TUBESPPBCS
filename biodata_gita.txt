@@ -1,0 +1,5 @@
+Nama    : Gita Rohimawati
+NIM     : 230102052
+Kelas   : IF23A
+Prodi   : Teknik Informatika
+Angkatan : 2023
