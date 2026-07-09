@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -12,12 +14,55 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  final AuthService authService = AuthService();
+  
+  bool isLoading = false;
+
   bool rememberMe = false;
   bool obscurePassword = true;
 
   static const Color primaryColor = Color(0xFFF5B41B);
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
+
+  Future<void> login() async {
+  print("LOGIN DIKLIK");
+
+  setState(() {
+    isLoading = true;
+  });
+
+  final result = await authService.login(
+    email: emailController.text.trim(),
+    password: passwordController.text,
+  );
+
+  print(result);
+
+  setState(() {
+    isLoading = false;
+  });
+
+  if (result['success']) {
+    final roleId = result['data']['user']['role_id'];
+
+    if (!mounted) return;
+
+    if (roleId == 1) {
+      Navigator.pushReplacementNamed(context, "/home");
+    } else {
+      Navigator.pushReplacementNamed(context, "/home");
+    }
+  } else {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']),
+      ),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -198,14 +243,7 @@ class _LoginPageState extends State<LoginPage> {
                       foregroundColor: Colors.black,
                     ),
 
-                    onPressed: () {
-
-                      /// sementara
-                      Navigator.pushReplacementNamed(
-                          context,
-                          "/home");
-
-                    },
+                    onPressed: isLoading ? null : login,
 
                     child: const Text(
                       "Masuk",
