@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_service.dart';
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -11,15 +13,64 @@ class _RegisterPageState extends State<RegisterPage> {
 
   final TextEditingController namaController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
+  final TextEditingController noHpController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController konfirmasiController = TextEditingController();
 
+  final AuthService authService = AuthService();
+
   bool hidePassword = true;
   bool hideKonfirmasi = true;
+  bool isLoading = false;
 
   static const Color primaryColor = Color(0xFFF5B41B);
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
+
+  Future<void> register() async {
+    if (passwordController.text != konfirmasiController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Konfirmasi password tidak sama"),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    final result = await authService.register(
+      name: namaController.text.trim(),
+      email: emailController.text.trim(),
+      noHp: noHpController.text.trim(),
+      password: passwordController.text,
+      passwordConfirmation: konfirmasiController.text,
+    );
+
+    setState(() {
+      isLoading = false;
+    });
+
+    if (!mounted) return;
+
+    if (result['success']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Registrasi berhasil, silakan masuk"),
+        ),
+      );
+
+      Navigator.pushReplacementNamed(context, "/login");
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? "Registrasi gagal"),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,6 +185,36 @@ class _RegisterPageState extends State<RegisterPage> {
                 const SizedBox(height: 20),
 
                 const Text(
+                  "No. HP",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: noHpController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: Colors.white),
+
+                  decoration: InputDecoration(
+                    hintText: "08xxxxxxxxxx",
+                    hintStyle: const TextStyle(
+                      color: Colors.white38,
+                    ),
+                    filled: true,
+                    fillColor: backgroundColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
                   "Password",
                   style: TextStyle(
                     color: Colors.white,
@@ -233,29 +314,23 @@ class _RegisterPageState extends State<RegisterPage> {
                       foregroundColor: Colors.black,
                     ),
 
-                    onPressed: () {
+                    onPressed: isLoading ? null : register,
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Registrasi berhasil (sementara)",
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Text(
+                            "Daftar",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      );
-
-                      Navigator.pushReplacementNamed(
-                        context,
-                        "/login",
-                      );
-
-                    },
-
-                    child: const Text(
-                      "Daftar",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ),
                 ),
 
@@ -324,6 +399,7 @@ class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     namaController.dispose();
     emailController.dispose();
+    noHpController.dispose();
     passwordController.dispose();
     konfirmasiController.dispose();
     super.dispose();

@@ -51,7 +51,7 @@ class _LoginPageState extends State<LoginPage> {
     if (roleId == 1) {
       Navigator.pushReplacementNamed(context, "/home");
     } else {
-      Navigator.pushReplacementNamed(context, "/home");
+      Navigator.pushReplacementNamed(context, "/warga/buat-laporan");
     }
   } else {
     if (!mounted) return;
