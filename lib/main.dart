@@ -4,6 +4,8 @@ import 'screens/public/landing_page.dart';
 import 'screens/public/login_page.dart';
 import 'screens/public/register_page.dart';
 import 'screens/admin/dashboard_page.dart';
+import 'screens/warga/buat_laporan_screen.dart';
+import 'screens/warga/riwayat_laporan_screen.dart';
 
 void main() {
   runApp(const RoadFixApp());
@@ -30,6 +32,8 @@ class RoadFixApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/home': (context) => const DashboardPage(),
+        '/warga/buat-laporan': (context) => const BuatLaporanScreen(),
+        '/warga/riwayat-laporan': (context) => const RiwayatLaporanScreen(),
       },
     );
   }

@@ -236,10 +236,8 @@ class _LoginPageState extends State<LoginPage> {
                               ? Icons.visibility
                               : Icons.visibility_off),
                           onPressed: () {
-                            setState(() {
-                              obscurePassword = !obscurePassword;
-                            });
-                          },
+  print("LOGIN DITEKAN");
+}
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -277,7 +275,11 @@ class _LoginPageState extends State<LoginPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).pushReplacementNamed(
+                            '/warga/buat-laporan',
+                          );
+                        },
                         child: const Text(
                           "Masuk",
                           style: TextStyle(
