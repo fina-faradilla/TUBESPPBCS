@@ -10,6 +10,9 @@ class LaporanFormResult {
   final String kategori;
   final String status;
   final String tanggal;
+  final String tingkatKerusakan;
+  final String alamat;
+  final String deskripsi;
 
   LaporanFormResult({
     required this.judul,
@@ -17,6 +20,9 @@ class LaporanFormResult {
     required this.kategori,
     required this.status,
     required this.tanggal,
+    required this.tingkatKerusakan,
+    required this.alamat,
+    required this.deskripsi,
   });
 }
 
@@ -45,8 +51,11 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
   late final TextEditingController _judulCtrl;
   late final TextEditingController _pelaporCtrl;
   late final TextEditingController _tanggalCtrl;
+  late final TextEditingController _alamatCtrl;
+  late final TextEditingController _deskripsiCtrl;
   late String _kategori;
   late String _status;
+  late String _tingkatKerusakan;
 
   bool get isEdit => widget.existing != null;
 
@@ -59,8 +68,11 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
     _tanggalCtrl = TextEditingController(
       text: e?.tanggal ?? formatTanggal(DateTime.now()),
     );
+    _alamatCtrl = TextEditingController(text: e?.alamat ?? '');
+    _deskripsiCtrl = TextEditingController(text: e?.deskripsi ?? '');
     _kategori = e?.kategori ?? kKategoriOptions.first;
     _status = e?.status ?? kStatusOptions.first;
+    _tingkatKerusakan = e?.tingkatKerusakan ?? kTingkatKerusakanOptions.first;
   }
 
   @override
@@ -68,6 +80,8 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
     _judulCtrl.dispose();
     _pelaporCtrl.dispose();
     _tanggalCtrl.dispose();
+    _alamatCtrl.dispose();
+    _deskripsiCtrl.dispose();
     super.dispose();
   }
 
@@ -126,6 +140,11 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
         kategori: _kategori,
         status: _status,
         tanggal: _tanggalCtrl.text.trim(),
+        tingkatKerusakan: _tingkatKerusakan,
+        alamat: _alamatCtrl.text.trim().isEmpty ? '-' : _alamatCtrl.text.trim(),
+        deskripsi: _deskripsiCtrl.text.trim().isEmpty
+            ? '-'
+            : _deskripsiCtrl.text.trim(),
       ),
     );
   }
@@ -139,8 +158,11 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
         side: const BorderSide(color: AppColors.cardBorder),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
+        constraints: BoxConstraints(
+          maxWidth: 460,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
@@ -177,7 +199,7 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _kategori,
+                        initialValue: _kategori,
                         dropdownColor: AppColors.cardBg,
                         style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                         decoration: _decoration('Kategori'),
@@ -190,7 +212,7 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _status,
+                        initialValue: _status,
                         dropdownColor: AppColors.cardBg,
                         style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                         decoration: _decoration('Status'),
@@ -203,17 +225,54 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _tingkatKerusakan,
+                        dropdownColor: AppColors.cardBg,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: _decoration('Tingkat Kerusakan'),
+                        items: kTingkatKerusakanOptions
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _tingkatKerusakan = v!),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _tanggalCtrl,
+                        readOnly: true,
+                        onTap: _pickTanggal,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: _decoration('Tanggal').copyWith(
+                          suffixIcon: const Icon(Icons.calendar_today,
+                              size: 16, color: AppColors.textSecondary),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Tanggal wajib diisi'
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 TextFormField(
-                  controller: _tanggalCtrl,
-                  readOnly: true,
-                  onTap: _pickTanggal,
+                  controller: _alamatCtrl,
                   style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _decoration('Tanggal').copyWith(
-                    suffixIcon: const Icon(Icons.calendar_today,
-                        size: 16, color: AppColors.textSecondary),
-                  ),
+                  decoration: _decoration('Alamat'),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Tanggal wajib diisi' : null,
+                      (v == null || v.trim().isEmpty) ? 'Alamat wajib diisi' : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _deskripsiCtrl,
+                  maxLines: 3,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: _decoration('Deskripsi'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Deskripsi wajib diisi' : null,
                 ),
                 const SizedBox(height: 24),
                 Row(

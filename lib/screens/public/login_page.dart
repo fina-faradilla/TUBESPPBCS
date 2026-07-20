@@ -8,7 +8,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
@@ -40,7 +39,6 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 const Text(
                   "AUTENTIKASI",
                   style: TextStyle(
@@ -65,10 +63,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const Text(
                   "Gunakan akun untuk melapor dan memantau status laporan Anda.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: Colors.white70, height: 1.5),
                 ),
 
                 const SizedBox(height: 30),
@@ -89,8 +84,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   decoration: InputDecoration(
                     hintText: "nama@email.com",
-                    hintStyle:
-                        const TextStyle(color: Colors.white38),
+                    hintStyle: const TextStyle(color: Colors.white38),
 
                     filled: true,
                     fillColor: backgroundColor,
@@ -119,12 +113,9 @@ class _LoginPageState extends State<LoginPage> {
                   style: const TextStyle(color: Colors.white),
 
                   decoration: InputDecoration(
-
                     hintText: "••••••••",
 
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
 
                     filled: true,
                     fillColor: backgroundColor,
@@ -154,7 +145,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 Row(
                   children: [
-
                     Checkbox(
                       value: rememberMe,
                       activeColor: primaryColor,
@@ -177,11 +167,9 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {},
                       child: const Text(
                         "Lupa kata sandi?",
-                        style: TextStyle(
-                          color: primaryColor,
-                        ),
+                        style: TextStyle(color: primaryColor),
                       ),
-                    )
+                    ),
                   ],
                 ),
 
@@ -192,49 +180,39 @@ class _LoginPageState extends State<LoginPage> {
                   height: 50,
 
                   child: ElevatedButton(
-
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.black,
                     ),
 
                     onPressed: () {
-
                       /// sementara
                       Navigator.pushReplacementNamed(
-                          context,
-                          "/home");
-
+                        context,
+                        "/admin/dashboard",
+                      );
                     },
 
                     child: const Text(
                       "Masuk",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 20),
-                                Center(
+                Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     children: [
-
                       const Text(
                         "Belum punya akun? ",
-                        style: TextStyle(
-                          color: Colors.white70,
-                        ),
+                        style: TextStyle(color: Colors.white70),
                       ),
 
                       GestureDetector(
                         onTap: () {
-                          Navigator.pushReplacementNamed(
-                            context,
-                            "/register",
-                          );
+                          Navigator.pushReplacementNamed(context, "/register");
                         },
                         child: const Text(
                           "Daftar di sini",
@@ -262,9 +240,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     label: const Text(
                       "Kembali ke Beranda",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                 ),

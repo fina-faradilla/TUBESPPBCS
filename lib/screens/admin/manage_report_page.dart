@@ -66,28 +66,13 @@ class _ManageReportPageState extends State<ManageReportPage> {
       kategori: result.kategori,
       status: result.status,
       tanggal: result.tanggal,
+      tingkatKerusakan: result.tingkatKerusakan,
+      alamat: result.alamat,
+      deskripsi: result.deskripsi,
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Laporan baru berhasil ditambahkan')),
-      );
-    }
-  }
-
-  Future<void> _ubahLaporan(LaporanRow row) async {
-    final result = await showLaporanFormDialog(context, existing: row);
-    if (result == null) return;
-    _controller.ubahLaporan(
-      row.id,
-      judul: result.judul,
-      pelapor: result.pelapor,
-      kategori: result.kategori,
-      status: result.status,
-      tanggal: result.tanggal,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Laporan berhasil diperbarui')),
       );
     }
   }
@@ -129,6 +114,10 @@ class _ManageReportPageState extends State<ManageReportPage> {
         );
       }
     }
+  }
+
+  void _lihatDetail(LaporanRow row) {
+    Navigator.of(context).pushNamed('/admin/detail-laporan', arguments: row.id);
   }
 
   void _verifikasiLaporan(LaporanRow row) {
@@ -246,8 +235,8 @@ class _ManageReportPageState extends State<ManageReportPage> {
                             for (int i = 0; i < rows.length; i++) ...[
                               _TableDataRow(
                                 row: rows[i],
+                                onDetail: () => _lihatDetail(rows[i]),
                                 onVerifikasi: () => _verifikasiLaporan(rows[i]),
-                                onUbah: () => _ubahLaporan(rows[i]),
                                 onHapus: () => _hapusLaporan(rows[i]),
                               ),
                               if (i != rows.length - 1)
@@ -327,69 +316,115 @@ class _TableHeaderRow extends StatelessWidget {
     return const Row(
       children: [
         Expanded(flex: 2, child: Text('ID', style: style)),
-        Expanded(flex: 4, child: Text('JUDUL', style: style)),
+        Expanded(flex: 3, child: Text('JUDUL', style: style)),
         Expanded(flex: 3, child: Text('PELAPOR', style: style)),
-        Expanded(flex: 3, child: Text('KATEGORI', style: style)),
+        Expanded(flex: 2, child: Text('KATEGORI', style: style)),
+        Expanded(flex: 4, child: Text('DESKRIPSI', style: style)),
         Expanded(flex: 3, child: Text('STATUS', style: style)),
-        Expanded(flex: 3, child: Text('TANGGAL', style: style)),
-        Expanded(flex: 3, child: Text('AKSI', style: style)),
+        Expanded(flex: 2, child: Text('TANGGAL', style: style)),
+        Expanded(flex: 2, child: Text('AKSI', style: style)),
       ],
+    );
+  }
+}
+
+class _AksiIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  const _AksiIcon({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = onTap != null;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(
+              icon,
+              size: 18,
+              color: enabled ? color : color.withOpacity(0.35),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _TableDataRow extends StatelessWidget {
   final LaporanRow row;
+  final VoidCallback onDetail;
   final VoidCallback onVerifikasi;
-  final VoidCallback onUbah;
   final VoidCallback onHapus;
 
   const _TableDataRow({
     required this.row,
+    required this.onDetail,
     required this.onVerifikasi,
-    required this.onUbah,
     required this.onHapus,
   });
 
   @override
   Widget build(BuildContext context) {
     const textStyle = TextStyle(color: AppColors.textPrimary, fontSize: 13);
-    final bool sudahSelesai = row.status == 'SELESAI';
+    final bool sudahSelesai = row.status == 'Selesai';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(flex: 2, child: Text(row.id, style: textStyle)),
-        Expanded(flex: 4, child: Text(row.judul, style: textStyle)),
+        Expanded(flex: 3, child: Text(row.judul, style: textStyle)),
         Expanded(flex: 3, child: Text(row.pelapor, style: textStyle)),
-        Expanded(flex: 3, child: Text(row.kategori, style: textStyle)),
-        Expanded(flex: 3, child: StatusBadge(label: row.status, color: row.statusColor)),
-        Expanded(flex: 3, child: Text(row.tanggal, style: textStyle)),
+        Expanded(flex: 2, child: Text(row.kategori, style: textStyle)),
         Expanded(
-          flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          flex: 4,
+          child: Text(
+            row.deskripsi,
+            style: textStyle.copyWith(color: AppColors.textSecondary, fontSize: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Expanded(flex: 3, child: StatusBadge(label: row.status, color: row.statusColor)),
+        Expanded(flex: 2, child: Text(row.tanggal, style: textStyle)),
+        Expanded(
+          flex: 2,
+          child: Row(
             children: [
-              InkWell(
+              _AksiIcon(
+                icon: Icons.visibility_outlined,
+                color: AppColors.textSecondary,
+                tooltip: 'Detail',
+                onTap: onDetail,
+              ),
+              const SizedBox(width: 8),
+              _AksiIcon(
+                icon: Icons.check_circle_outline,
+                color: AppColors.blue,
+                tooltip: 'Verifikasi',
                 onTap: sudahSelesai ? null : onVerifikasi,
-                child: Text(
-                  'Verifikasi',
-                  style: textStyle.copyWith(
-                    color: sudahSelesai ? AppColors.textSecondary : AppColors.blue,
-                    fontSize: 12,
-                  ),
-                ),
               ),
-              const SizedBox(height: 4),
-              InkWell(
-                onTap: onUbah,
-                child: Text('Ubah',
-                    style: textStyle.copyWith(color: AppColors.textSecondary, fontSize: 12)),
-              ),
-              const SizedBox(height: 4),
-              InkWell(
+              const SizedBox(width: 8),
+              _AksiIcon(
+                icon: Icons.delete_outline,
+                color: Colors.redAccent,
+                tooltip: 'Hapus',
                 onTap: onHapus,
-                child: const Text('Hapus', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
               ),
             ],
           ),

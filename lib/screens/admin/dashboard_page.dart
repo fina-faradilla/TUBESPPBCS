@@ -17,6 +17,7 @@ class DashboardPage extends StatelessWidget {
     final controller = LaporanController.instance;
 
     return Scaffold(
+      backgroundColor: AppColors.bgDark,
       body: Row(
         children: [
           const Sidebar(currentRoute: '/admin/dashboard'),
@@ -91,7 +92,8 @@ class DashboardPage extends StatelessWidget {
                                     flex: 3,
                                     child: CardContainer(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const Text(
                                             'TREN LAPORAN PER BULAN',
@@ -107,7 +109,14 @@ class DashboardPage extends StatelessWidget {
                                             height: 220,
                                             child: BarTrendChart(
                                               values: [58, 66, 40, 82, 74, 96],
-                                              labels: ['Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul'],
+                                              labels: [
+                                                'Feb',
+                                                'Mar',
+                                                'Apr',
+                                                'Mei',
+                                                'Jun',
+                                                'Jul',
+                                              ],
                                             ),
                                           ),
                                         ],
@@ -119,7 +128,8 @@ class DashboardPage extends StatelessWidget {
                                     flex: 2,
                                     child: CardContainer(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const Text(
                                             'LAPORAN TERBARU',
@@ -135,19 +145,35 @@ class DashboardPage extends StatelessWidget {
                                             const Text(
                                               'Belum ada laporan.',
                                               style: TextStyle(
-                                                  color: AppColors.textSecondary, fontSize: 13),
+                                                color: AppColors.textSecondary,
+                                                fontSize: 13,
+                                              ),
                                             )
                                           else
-                                            for (int i = 0; i < controller.terbaru.length; i++) ...[
+                                            for (
+                                              int i = 0;
+                                              i < controller.terbaru.length;
+                                              i++
+                                            ) ...[
                                               LaporanTerbaruItem(
-                                                judul: controller.terbaru[i].judul,
-                                                lokasi: controller.terbaru[i].pelapor,
-                                                status: controller.terbaru[i].status,
-                                                color: controller.terbaru[i].statusColor,
+                                                judul:
+                                                    controller.terbaru[i].judul,
+                                                lokasi: controller
+                                                    .terbaru[i]
+                                                    .pelapor,
+                                                status: controller
+                                                    .terbaru[i]
+                                                    .status,
+                                                color: controller
+                                                    .terbaru[i]
+                                                    .statusColor,
                                               ),
-                                              if (i != controller.terbaru.length - 1)
+                                              if (i !=
+                                                  controller.terbaru.length - 1)
                                                 const Divider(
-                                                    color: AppColors.cardBorder, height: 24),
+                                                  color: AppColors.cardBorder,
+                                                  height: 24,
+                                                ),
                                             ],
                                         ],
                                       ),
