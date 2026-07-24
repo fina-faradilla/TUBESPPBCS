@@ -77,6 +77,27 @@ class _ManageReportPageState extends State<ManageReportPage> {
     }
   }
 
+  Future<void> _ubahLaporan(LaporanRow row) async {
+    final result = await showLaporanFormDialog(context, existing: row);
+    if (result == null) return;
+    _controller.ubahLaporan(
+      row.id,
+      judul: result.judul,
+      pelapor: result.pelapor,
+      kategori: result.kategori,
+      status: result.status,
+      tanggal: result.tanggal,
+      tingkatKerusakan: result.tingkatKerusakan,
+      alamat: result.alamat,
+      deskripsi: result.deskripsi,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Laporan berhasil diubah')),
+      );
+    }
+  }
+
   Future<void> _hapusLaporan(LaporanRow row) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -236,6 +257,7 @@ class _ManageReportPageState extends State<ManageReportPage> {
                               _TableDataRow(
                                 row: rows[i],
                                 onDetail: () => _lihatDetail(rows[i]),
+                                onEdit: () => _ubahLaporan(rows[i]),
                                 onVerifikasi: () => _verifikasiLaporan(rows[i]),
                                 onHapus: () => _hapusLaporan(rows[i]),
                               ),
@@ -319,10 +341,10 @@ class _TableHeaderRow extends StatelessWidget {
         Expanded(flex: 3, child: Text('JUDUL', style: style)),
         Expanded(flex: 3, child: Text('PELAPOR', style: style)),
         Expanded(flex: 2, child: Text('KATEGORI', style: style)),
-        Expanded(flex: 4, child: Text('DESKRIPSI', style: style)),
+        Expanded(flex: 3, child: Text('DESKRIPSI', style: style)),
         Expanded(flex: 3, child: Text('STATUS', style: style)),
         Expanded(flex: 2, child: Text('TANGGAL', style: style)),
-        Expanded(flex: 2, child: Text('AKSI', style: style)),
+        Expanded(flex: 3, child: Text('AKSI', style: style)),
       ],
     );
   }
@@ -369,12 +391,14 @@ class _AksiIcon extends StatelessWidget {
 class _TableDataRow extends StatelessWidget {
   final LaporanRow row;
   final VoidCallback onDetail;
+  final VoidCallback onEdit;
   final VoidCallback onVerifikasi;
   final VoidCallback onHapus;
 
   const _TableDataRow({
     required this.row,
     required this.onDetail,
+    required this.onEdit,
     required this.onVerifikasi,
     required this.onHapus,
   });
@@ -392,7 +416,7 @@ class _TableDataRow extends StatelessWidget {
         Expanded(flex: 3, child: Text(row.pelapor, style: textStyle)),
         Expanded(flex: 2, child: Text(row.kategori, style: textStyle)),
         Expanded(
-          flex: 4,
+          flex: 3,
           child: Text(
             row.deskripsi,
             style: textStyle.copyWith(color: AppColors.textSecondary, fontSize: 12),
@@ -403,7 +427,7 @@ class _TableDataRow extends StatelessWidget {
         Expanded(flex: 3, child: StatusBadge(label: row.status, color: row.statusColor)),
         Expanded(flex: 2, child: Text(row.tanggal, style: textStyle)),
         Expanded(
-          flex: 2,
+          flex: 3,
           child: Row(
             children: [
               _AksiIcon(
@@ -411,6 +435,13 @@ class _TableDataRow extends StatelessWidget {
                 color: AppColors.textSecondary,
                 tooltip: 'Detail',
                 onTap: onDetail,
+              ),
+              const SizedBox(width: 8),
+              _AksiIcon(
+                icon: Icons.edit_outlined,
+                color: AppColors.gold,
+                tooltip: 'Ubah',
+                onTap: onEdit,
               ),
               const SizedBox(width: 8),
               _AksiIcon(

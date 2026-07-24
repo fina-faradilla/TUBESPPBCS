@@ -199,4 +199,30 @@ class LaporanController extends ChangeNotifier {
     _rows.removeWhere((r) => r.id == id);
     notifyListeners();
   }
+
+  int _tindakLanjutSequence = 100;
+
+  /// Tambah satu entri riwayat tindak lanjut ke laporan [laporanId].
+  /// Dipanggil dari tab "Riwayat Tindak Lanjut" di halaman Detail Laporan.
+  void tambahTindakLanjut(
+    String laporanId, {
+    required String judul,
+    required String keterangan,
+  }) {
+    final index = _rows.indexWhere((r) => r.id == laporanId);
+    if (index == -1) return;
+
+    _tindakLanjutSequence += 1;
+    final baru = TindakLanjut(
+      id: _tindakLanjutSequence,
+      judul: judul,
+      keterangan: keterangan,
+      createdAt: DateTime.now(),
+    );
+
+    _rows[index] = _rows[index].copyWith(
+      tindakLanjuts: [..._rows[index].tindakLanjuts, baru],
+    );
+    notifyListeners();
+  }
 }

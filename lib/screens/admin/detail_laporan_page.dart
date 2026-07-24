@@ -8,6 +8,7 @@ import '../../widgets/sidebar.dart';
 import '../../widgets/top_bar.dart';
 import '../../widgets/card_container.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/tindak_lanjut_form_dialog.dart';
 
 /// Route: '/admin/detail-laporan'
 /// Menerima argumen berupa String [id] laporan lewat
@@ -114,7 +115,11 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
                         padding: const EdgeInsets.fromLTRB(28, 16, 28, 28),
                         child: _tab == 0
                             ? _DetailTab(row: row)
-                            : _RiwayatTab(tindakLanjuts: row.tindakLanjuts),
+                            : _RiwayatTab(
+                                laporanId: row.id,
+                                tindakLanjuts: row.tindakLanjuts,
+                                controller: controller,
+                              ),
                       ),
                     ),
                   ],
@@ -389,8 +394,15 @@ class _DetailTab extends StatelessWidget {
 
 /// Isi tab "Riwayat Tindak Lanjut": linimasa penanganan laporan.
 class _RiwayatTab extends StatelessWidget {
+  final String laporanId;
   final List<TindakLanjut> tindakLanjuts;
-  const _RiwayatTab({required this.tindakLanjuts});
+  final LaporanController controller;
+
+  const _RiwayatTab({
+    required this.laporanId,
+    required this.tindakLanjuts,
+    required this.controller,
+  });
 
   static const List<String> _bulan = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -399,25 +411,67 @@ class _RiwayatTab extends StatelessWidget {
 
   String _formatTanggal(DateTime d) => '${d.day} ${_bulan[d.month - 1]} ${d.year}';
 
+  Future<void> _tambah(BuildContext context) async {
+    final result = await showTindakLanjutFormDialog(context);
+    if (result == null) return;
+    controller.tambahTindakLanjut(
+      laporanId,
+      judul: result.judul,
+      keterangan: result.keterangan,
+    );
+  }
+
+  Widget _tombolTambah(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () => _tambah(context),
+      icon: const Icon(Icons.add, size: 18, color: Colors.black),
+      label: const Text('Tambah Tindak Lanjut',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.gold,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (tindakLanjuts.isEmpty) {
-      return const CardContainer(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Center(
-            child: Text(
-              'Belum ada riwayat tindak lanjut untuk laporan ini.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: _tombolTambah(context),
+          ),
+          const SizedBox(height: 16),
+          CardContainer(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Belum ada riwayat tindak lanjut untuk laporan ini.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       );
     }
-    return CardContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(tindakLanjuts.length, (i) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: _tombolTambah(context),
+        ),
+        const SizedBox(height: 16),
+        CardContainer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(tindakLanjuts.length, (i) {
           final t = tindakLanjuts[i];
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -460,8 +514,10 @@ class _RiwayatTab extends StatelessWidget {
               ],
             ),
           );
-        }),
-      ),
+            }),
+          ),
+        ),
+      ],
     );
   }
 }
