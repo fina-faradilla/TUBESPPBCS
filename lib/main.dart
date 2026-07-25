@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'theme/app_colors.dart';
 import 'screens/public/landing_page.dart';
-import 'screens/public/login_page.dart';
+import 'screens/auth/login_page.dart';
 import 'screens/public/register_page.dart';
 import 'screens/admin/dashboard_page.dart';
 import 'screens/admin/manage_report_page.dart';
