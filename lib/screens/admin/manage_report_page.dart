@@ -418,7 +418,7 @@ class _ManageReportPageState extends State<ManageReportPage> {
                   tooltip: 'Detail',
                   onTap: () => _bukaDetail(row.id),
                 ),
-                if (row.status == 'Menunggu')
+                if (row.status == 'Menunggu' || row.status == 'Diproses')
                   _actionBtn(
                     icon: Icons.check_circle_outline,
                     tooltip: 'Verifikasi',

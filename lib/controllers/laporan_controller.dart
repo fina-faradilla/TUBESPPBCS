@@ -17,7 +17,7 @@ class LaporanController extends ChangeNotifier {
 
   int get total => _rows.length;
   int get menungguVerifikasi =>
-      _rows.where((r) => r.status == 'Menunggu Verifikasi').length;
+      _rows.where((r) => r.status == 'Menunggu').length;
   int get sedangDiproses => _rows.where((r) => r.status == 'Diproses').length;
   int get selesai => _rows.where((r) => r.status == 'Selesai').length;
   List<LaporanRow> get terbaru => _rows.take(4).toList();
