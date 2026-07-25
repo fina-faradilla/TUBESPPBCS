@@ -10,14 +10,13 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-
   final TextEditingController namaController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
   final TextEditingController noHpController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController konfirmasiController = TextEditingController();
 
-  final AuthService authService = AuthService();
+  final AuthService _authService = AuthService();
 
   bool hidePassword = true;
   bool hideKonfirmasi = true;
@@ -27,21 +26,28 @@ class _RegisterPageState extends State<RegisterPage> {
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
 
-  Future<void> register() async {
-    if (passwordController.text != konfirmasiController.text) {
+  Future<void> _handleRegister() async {
+    // Basic client-side checks before hitting the API.
+    if (namaController.text.trim().isEmpty ||
+        noHpController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
+        passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Konfirmasi password tidak sama"),
-        ),
+        const SnackBar(content: Text("Mohon lengkapi semua kolom.")),
       );
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    if (passwordController.text != konfirmasiController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Konfirmasi password tidak cocok.")),
+      );
+      return;
+    }
 
-    final result = await authService.register(
+    setState(() => isLoading = true);
+
+    final result = await _authService.register(
       name: namaController.text.trim(),
       email: emailController.text.trim(),
       noHp: noHpController.text.trim(),
@@ -49,25 +55,18 @@ class _RegisterPageState extends State<RegisterPage> {
       passwordConfirmation: konfirmasiController.text,
     );
 
-    setState(() {
-      isLoading = false;
-    });
-
     if (!mounted) return;
+    setState(() => isLoading = false);
 
-    if (result['success']) {
+    if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Registrasi berhasil, silakan masuk"),
-        ),
+        const SnackBar(content: Text("Registrasi berhasil, silakan masuk.")),
       );
 
       Navigator.pushReplacementNamed(context, "/login");
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? "Registrasi gagal"),
-        ),
+        SnackBar(content: Text(result['message'] ?? "Registrasi gagal.")),
       );
     }
   }
@@ -82,7 +81,9 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.all(25),
 
           child: Container(
-            width: 430,
+            width: MediaQuery.of(context).size.width < 480
+                ? double.infinity
+                : 430,
             padding: const EdgeInsets.all(28),
 
             decoration: BoxDecoration(
@@ -156,35 +157,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 const SizedBox(height: 20),
 
                 const Text(
-                  "Email",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                TextField(
-                  controller: emailController,
-                  style: const TextStyle(color: Colors.white),
-
-                  decoration: InputDecoration(
-                    hintText: "nama@email.com",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
-                    filled: true,
-                    fillColor: backgroundColor,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                const Text(
                   "No. HP",
                   style: TextStyle(
                     color: Colors.white,
@@ -201,6 +173,36 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   decoration: InputDecoration(
                     hintText: "08xxxxxxxxxx",
+                    hintStyle: const TextStyle(
+                      color: Colors.white38,
+                    ),
+                    filled: true,
+                    fillColor: backgroundColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                const Text(
+                  "Email",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white),
+
+                  decoration: InputDecoration(
+                    hintText: "nama@email.com",
                     hintStyle: const TextStyle(
                       color: Colors.white38,
                     ),
@@ -314,14 +316,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       foregroundColor: Colors.black,
                     ),
 
-                    onPressed: isLoading ? null : register,
+                    onPressed: isLoading ? null : _handleRegister,
 
                     child: isLoading
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                              strokeWidth: 2.5,
                               color: Colors.black,
                             ),
                           )
@@ -398,8 +400,8 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     namaController.dispose();
-    emailController.dispose();
     noHpController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     konfirmasiController.dispose();
     super.dispose();

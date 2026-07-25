@@ -10,59 +10,52 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  final AuthService authService = AuthService();
-  
-  bool isLoading = false;
+  final AuthService _authService = AuthService();
 
   bool rememberMe = false;
   bool obscurePassword = true;
+  bool isLoading = false;
 
   static const Color primaryColor = Color(0xFFF5B41B);
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
 
-  Future<void> login() async {
-  print("LOGIN DIKLIK");
-
-  setState(() {
-    isLoading = true;
-  });
-
-  final result = await authService.login(
-    email: emailController.text.trim(),
-    password: passwordController.text,
-  );
-
-  print(result);
-
-  setState(() {
-    isLoading = false;
-  });
-
-  if (result['success']) {
-    final roleId = result['data']['user']['role_id'];
-
-    if (!mounted) return;
-
-    if (roleId == 1) {
-      Navigator.pushReplacementNamed(context, "/home");
-    } else {
-      Navigator.pushReplacementNamed(context, "/warga/buat-laporan");
+  Future<void> _handleLogin() async {
+    if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Mohon isi email dan password.")),
+      );
+      return;
     }
-  } else {
-    if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']),
-      ),
+    setState(() => isLoading = true);
+
+    final result = await _authService.login(
+      email: emailController.text.trim(),
+      password: passwordController.text,
     );
+
+    if (!mounted) return;
+    setState(() => isLoading = false);
+
+    if (result['success'] == true) {
+      final int roleId = result['data']['user']['role_id'];
+
+      // role_id 1 = Admin -> dashboard admin.
+      // role_id lainnya (2 = Warga) -> portal warga.
+      final String destination =
+          roleId == 1 ? "/home" : "/warga/buat-laporan";
+
+      Navigator.pushReplacementNamed(context, destination);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? "Login gagal.")),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +67,9 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(25),
 
           child: Container(
-            width: 430,
+            width: MediaQuery.of(context).size.width < 480
+                ? double.infinity
+                : 430,
             padding: const EdgeInsets.all(28),
 
             decoration: BoxDecoration(
@@ -130,6 +125,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 TextField(
                   controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.white),
 
                   decoration: InputDecoration(
@@ -243,14 +239,23 @@ class _LoginPageState extends State<LoginPage> {
                       foregroundColor: Colors.black,
                     ),
 
-                    onPressed: isLoading ? null : login,
+                    onPressed: isLoading ? null : _handleLogin,
 
-                    child: const Text(
-                      "Masuk",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Text(
+                            "Masuk",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
 
