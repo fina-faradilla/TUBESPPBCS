@@ -9,6 +9,7 @@ import '../../widgets/top_bar.dart';
 import '../../widgets/card_container.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/tindak_lanjut_form_dialog.dart';
+import '../../utils/responsive.dart';
 
 /// Route: '/admin/detail-laporan'
 /// Menerima argumen berupa String [id] laporan lewat
@@ -33,100 +34,121 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
     final args = ModalRoute.of(context)?.settings.arguments;
     final id = args is String ? args : null;
     final controller = LaporanController.instance;
+    final bool mobile = isMobileWidth(context);
+
+    final Widget content = AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final row = id == null ? null : controller.getById(id);
+
+        if (row == null) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TopBar(
+                breadcrumb: 'PORTAL ADMIN / DINAS',
+                title: 'DETAIL LAPORAN',
+                trailing: TextButton.icon(
+                  onPressed: () => Navigator.of(context)
+                      .pushReplacementNamed('/admin/manage-report'),
+                  icon: const Icon(Icons.arrow_back, size: 16, color: AppColors.textSecondary),
+                  label: const Text('Kembali ke Kelola Laporan',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Laporan tidak ditemukan.\nSilakan buka halaman ini lewat tombol Detail pada Kelola Laporan.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TopBar(
+              breadcrumb: 'PORTAL ADMIN / DINAS',
+              title: 'DETAIL LAPORAN',
+              trailing: TextButton.icon(
+                onPressed: () => Navigator.of(context)
+                    .pushReplacementNamed('/admin/manage-report'),
+                icon: const Icon(Icons.arrow_back, size: 16, color: AppColors.textSecondary),
+                label: const Text('Kembali ke Kelola Laporan',
+                    style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ),
+            // ===== Tab: Detail Laporan / Riwayat Tindak Lanjut =====
+            Padding(
+              padding: EdgeInsets.fromLTRB(mobile ? 16 : 28, 0, mobile ? 16 : 28, 0),
+              child: Row(
+                children: [
+                  _TabButton(
+                    label: 'Detail Laporan',
+                    selected: _tab == 0,
+                    onTap: () => setState(() => _tab = 0),
+                  ),
+                  const SizedBox(width: 20),
+                  _TabButton(
+                    label: 'Riwayat Tindak Lanjut',
+                    selected: _tab == 1,
+                    badgeCount: row.tindakLanjuts.length,
+                    onTap: () => setState(() => _tab = 1),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(mobile ? 16 : 28, 8, mobile ? 16 : 28, 0),
+              child: const Divider(color: AppColors.cardBorder, height: 1),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                    mobile ? 16 : 28, 16, mobile ? 16 : 28, 28),
+                child: _tab == 0
+                    ? _DetailTab(row: row)
+                    : _RiwayatTab(
+                        laporanId: row.id,
+                        tindakLanjuts: row.tindakLanjuts,
+                        controller: controller,
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (mobile) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.sidebarBg,
+          iconTheme: const IconThemeData(color: AppColors.textPrimary),
+          title: const Text('RoadFix',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ),
+        drawer: const Drawer(
+          backgroundColor: Colors.transparent,
+          child: Sidebar(currentRoute: '/admin/manage-report'),
+        ),
+        body: content,
+      );
+    }
 
     return Scaffold(
       body: Row(
         children: [
           const Sidebar(currentRoute: '/admin/manage-report'),
-          Expanded(
-            child: AnimatedBuilder(
-              animation: controller,
-              builder: (context, _) {
-                final row = id == null ? null : controller.getById(id);
-
-                if (row == null) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TopBar(
-                        breadcrumb: 'PORTAL ADMIN / DINAS',
-                        title: 'DETAIL LAPORAN',
-                        trailing: TextButton.icon(
-                          onPressed: () => Navigator.of(context)
-                              .pushReplacementNamed('/admin/manage-report'),
-                          icon: const Icon(Icons.arrow_back, size: 16, color: AppColors.textSecondary),
-                          label: const Text('Kembali ke Kelola Laporan',
-                              style: TextStyle(color: AppColors.textSecondary)),
-                        ),
-                      ),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            'Laporan tidak ditemukan.\nSilakan buka halaman ini lewat tombol Detail pada Kelola Laporan.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TopBar(
-                      breadcrumb: 'PORTAL ADMIN / DINAS',
-                      title: 'DETAIL LAPORAN',
-                      trailing: TextButton.icon(
-                        onPressed: () => Navigator.of(context)
-                            .pushReplacementNamed('/admin/manage-report'),
-                        icon: const Icon(Icons.arrow_back, size: 16, color: AppColors.textSecondary),
-                        label: const Text('Kembali ke Kelola Laporan',
-                            style: TextStyle(color: AppColors.textSecondary)),
-                      ),
-                    ),
-                    // ===== Tab: Detail Laporan / Riwayat Tindak Lanjut =====
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
-                      child: Row(
-                        children: [
-                          _TabButton(
-                            label: 'Detail Laporan',
-                            selected: _tab == 0,
-                            onTap: () => setState(() => _tab = 0),
-                          ),
-                          const SizedBox(width: 20),
-                          _TabButton(
-                            label: 'Riwayat Tindak Lanjut',
-                            selected: _tab == 1,
-                            badgeCount: row.tindakLanjuts.length,
-                            onTap: () => setState(() => _tab = 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(28, 8, 28, 0),
-                      child: Divider(color: AppColors.cardBorder, height: 1),
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(28, 16, 28, 28),
-                        child: _tab == 0
-                            ? _DetailTab(row: row)
-                            : _RiwayatTab(
-                                laporanId: row.id,
-                                tindakLanjuts: row.tindakLanjuts,
-                                controller: controller,
-                              ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+          Expanded(child: content),
         ],
       ),
     );

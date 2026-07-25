@@ -6,6 +6,7 @@ import '../../widgets/sidebar.dart';
 import '../../widgets/top_bar.dart';
 import '../../widgets/card_container.dart';
 import '../../widgets/kategori_form_dialog.dart';
+import '../../utils/responsive.dart';
 
 /// Route: '/admin/manage-category'
 class ManageCategoryPage extends StatefulWidget {
@@ -111,112 +112,141 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
   @override
   Widget build(BuildContext context) {
     final rows = _filteredRows;
+    final bool mobile = isMobileWidth(context);
+    final double pagePad = mobile ? 16 : 28;
+
+    final Widget content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TopBar(
+          breadcrumb: 'PORTAL ADMIN / DINAS',
+          title: 'KELOLA KATEGORI',
+          trailing: ElevatedButton.icon(
+            onPressed: _tambahKategori,
+            icon: const Icon(Icons.add, size: 16, color: Colors.black),
+            label: Text(mobile ? 'Tambah' : 'Tambah Kategori',
+                style: const TextStyle(color: Colors.black)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.gold,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(pagePad, 8, pagePad, 28),
+            child: CardContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search bar
+                  Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgDark,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, size: 16, color: AppColors.textSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchCtrl,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary, fontSize: 13),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: 'Cari kategori atau ID...',
+                              hintStyle: TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          ),
+                        ),
+                        if (_searchCtrl.text.isNotEmpty)
+                          InkWell(
+                            onTap: () => _searchCtrl.clear(),
+                            child: const Icon(Icons.close,
+                                size: 16, color: AppColors.textSecondary),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (!mobile) ...[
+                    const _TableHeaderRow(),
+                    const Divider(color: AppColors.cardBorder, height: 24),
+                  ],
+
+                  // Baris data
+                  if (rows.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Text(
+                          'Tidak ada kategori yang cocok dengan pencarian.',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    for (int i = 0; i < rows.length; i++) ...[
+                      mobile
+                          ? _CategoryCard(
+                              row: rows[i],
+                              onEdit: () => _ubahKategori(rows[i]),
+                              onHapus: () => _hapusKategori(rows[i]),
+                            )
+                          : _TableDataRow(
+                              row: rows[i],
+                              onEdit: () => _ubahKategori(rows[i]),
+                              onHapus: () => _hapusKategori(rows[i]),
+                            ),
+                      if (i != rows.length - 1)
+                        mobile
+                            ? const SizedBox(height: 12)
+                            : const Divider(color: AppColors.cardBorder, height: 32),
+                    ],
+
+                  const SizedBox(height: 20),
+                  Text(
+                    'Menampilkan ${rows.length} dari ${_controller.total} kategori',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (mobile) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.sidebarBg,
+          iconTheme: const IconThemeData(color: AppColors.textPrimary),
+          title: const Text('RoadFix',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ),
+        drawer: const Drawer(
+          backgroundColor: Colors.transparent,
+          child: Sidebar(currentRoute: '/admin/manage-category'),
+        ),
+        body: content,
+      );
+    }
 
     return Scaffold(
       body: Row(
         children: [
           const Sidebar(currentRoute: '/admin/manage-category'),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TopBar(
-                  breadcrumb: 'PORTAL ADMIN / DINAS',
-                  title: 'KELOLA KATEGORI',
-                  trailing: ElevatedButton.icon(
-                    onPressed: _tambahKategori,
-                    icon: const Icon(Icons.add, size: 16, color: Colors.black),
-                    label: const Text('Tambah Kategori', style: TextStyle(color: Colors.black)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.gold,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(28, 8, 28, 28),
-                    child: CardContainer(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Search bar
-                          Container(
-                            height: 40,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.bgDark,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.cardBorder),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.search, size: 16, color: AppColors.textSecondary),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchCtrl,
-                                    style: const TextStyle(
-                                        color: AppColors.textPrimary, fontSize: 13),
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      border: InputBorder.none,
-                                      hintText: 'Cari kategori atau ID...',
-                                      hintStyle: TextStyle(
-                                          color: AppColors.textSecondary, fontSize: 13),
-                                    ),
-                                  ),
-                                ),
-                                if (_searchCtrl.text.isNotEmpty)
-                                  InkWell(
-                                    onTap: () => _searchCtrl.clear(),
-                                    child: const Icon(Icons.close,
-                                        size: 16, color: AppColors.textSecondary),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          const _TableHeaderRow(),
-                          const Divider(color: AppColors.cardBorder, height: 24),
-
-                          // Baris data
-                          if (rows.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 32),
-                              child: Center(
-                                child: Text(
-                                  'Tidak ada kategori yang cocok dengan pencarian.',
-                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                                ),
-                              ),
-                            )
-                          else
-                            for (int i = 0; i < rows.length; i++) ...[
-                              _TableDataRow(
-                                row: rows[i],
-                                onEdit: () => _ubahKategori(rows[i]),
-                                onHapus: () => _hapusKategori(rows[i]),
-                              ),
-                              if (i != rows.length - 1)
-                                const Divider(color: AppColors.cardBorder, height: 32),
-                            ],
-
-                          const SizedBox(height: 20),
-                          Text(
-                            'Menampilkan ${rows.length} dari ${_controller.total} kategori',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: content),
         ],
       ),
     );
@@ -333,6 +363,75 @@ class _TableDataRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Versi kartu dari satu baris kategori, dipakai saat layar sempit (HP)
+/// supaya tidak perlu memampatkan 4 kolom tabel ke lebar yang tidak cukup.
+class _CategoryCard extends StatelessWidget {
+  final Kategori row;
+  final VoidCallback onEdit;
+  final VoidCallback onHapus;
+
+  const _CategoryCard({
+    required this.row,
+    required this.onEdit,
+    required this.onHapus,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgDark,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(row.id,
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text(row.nama,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              _AksiIcon(
+                icon: Icons.edit_outlined,
+                color: AppColors.gold,
+                tooltip: 'Ubah',
+                onTap: onEdit,
+              ),
+              _AksiIcon(
+                icon: Icons.delete_outline,
+                color: Colors.redAccent,
+                tooltip: 'Hapus',
+                onTap: onHapus,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            row.deskripsi,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 }

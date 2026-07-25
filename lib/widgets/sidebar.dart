@@ -223,6 +223,9 @@ class _NavItem extends StatelessWidget {
               return;
             }
             if (route == currentRoute) return; // sudah di halaman ini
+            if (Scaffold.of(context).hasDrawer) {
+              Navigator.of(context).pop(); // tutup drawer di layar HP
+            }
             Navigator.of(context).pushReplacementNamed(route!);
           },
           child: Opacity(
@@ -272,6 +275,13 @@ class _LogoutItem extends StatelessWidget {
   final bool collapsed;
   const _LogoutItem({required this.onTap, required this.collapsed});
 
+  void _handleTap(BuildContext context) {
+    if (Scaffold.of(context).hasDrawer) {
+      Navigator.of(context).pop(); // tutup drawer di layar HP
+    }
+    onTap();
+  }
+
   @override
   Widget build(BuildContext context) {
     final Widget item = Material(
@@ -279,7 +289,7 @@ class _LogoutItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
+        onTap: () => _handleTap(context),
         child: Padding(
           padding: EdgeInsets.symmetric(
             vertical: 10,
