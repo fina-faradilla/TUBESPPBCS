@@ -222,7 +222,9 @@ class _NavItem extends StatelessWidget {
               );
               return;
             }
+
             if (route == currentRoute) return; // sudah di halaman ini
+
             if (Scaffold.of(context).hasDrawer) {
               Navigator.of(context).pop(); // tutup drawer di layar HP
             }
