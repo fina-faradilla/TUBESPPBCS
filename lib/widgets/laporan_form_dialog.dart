@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/laporan_row.dart';
 import '../theme/app_colors.dart';
 import '../utils/status_utils.dart';
+import '../controllers/kategori_controller.dart';
 
 /// Hasil submit form: judul, pelapor, kategori, status, tanggal.
 class LaporanFormResult {
@@ -57,11 +58,18 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
   late String _status;
   late String _tingkatKerusakan;
 
+  // Kategori sekarang dinamis, bersumber dari KategoriController yang
+  // sama dipakai halaman Kelola Kategori — bukan lagi kKategoriOptions
+  // yang statis, supaya keduanya selalu sinkron.
+  final KategoriController _kategoriController = KategoriController.instance;
+
   bool get isEdit => widget.existing != null;
 
   @override
   void initState() {
     super.initState();
+    _kategoriController.addListener(_onKategoriChanged);
+
     final e = widget.existing;
     _judulCtrl = TextEditingController(text: e?.judul ?? '');
     _pelaporCtrl = TextEditingController(text: e?.pelapor ?? '');
@@ -70,13 +78,31 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
     );
     _alamatCtrl = TextEditingController(text: e?.alamat ?? '');
     _deskripsiCtrl = TextEditingController(text: e?.deskripsi ?? '');
-    _kategori = e?.kategori ?? kKategoriOptions.first;
+
+    final namaList = _kategoriController.namaList;
+    _kategori = (e?.kategori != null && namaList.contains(e!.kategori))
+        ? e.kategori
+        : (namaList.isNotEmpty ? namaList.first : '');
+
     _status = e?.status ?? kStatusOptions.first;
     _tingkatKerusakan = e?.tingkatKerusakan ?? kTingkatKerusakanOptions.first;
   }
 
+  void _onKategoriChanged() {
+    // Kalau kategori yang lagi dipilih ternyata sudah dihapus dari
+    // Kelola Kategori sementara dialog ini masih terbuka, jatuhkan ke
+    // pilihan pertama yang masih ada supaya dropdown tidak crash.
+    final namaList = _kategoriController.namaList;
+    if (!namaList.contains(_kategori)) {
+      setState(() => _kategori = namaList.isNotEmpty ? namaList.first : '');
+    } else {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    _kategoriController.removeListener(_onKategoriChanged);
     _judulCtrl.dispose();
     _pelaporCtrl.dispose();
     _tanggalCtrl.dispose();
@@ -133,6 +159,18 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_kategori.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Belum ada kategori tersedia. Tambahkan dulu lewat Kelola Kategori.',
+          ),
+        ),
+      );
+      return;
+    }
+
     Navigator.of(context).pop(
       LaporanFormResult(
         judul: _judulCtrl.text.trim(),
@@ -151,6 +189,8 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final namaKategoriList = _kategoriController.namaList;
+
     return Dialog(
       backgroundColor: AppColors.cardBg,
       shape: RoundedRectangleBorder(
@@ -198,16 +238,29 @@ class _LaporanFormDialogState extends State<_LaporanFormDialog> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _kategori,
-                        dropdownColor: AppColors.cardBg,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                        decoration: _decoration('Kategori'),
-                        items: kKategoriOptions
-                            .map((k) => DropdownMenuItem(value: k, child: Text(k)))
-                            .toList(),
-                        onChanged: (v) => setState(() => _kategori = v!),
-                      ),
+                      child: namaKategoriList.isEmpty
+                          ? InputDecorator(
+                              decoration: _decoration('Kategori'),
+                              child: const Text(
+                                'Belum ada kategori',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            )
+                          : DropdownButtonFormField<String>(
+                              initialValue: _kategori,
+                              dropdownColor: AppColors.cardBg,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary, fontSize: 14),
+                              decoration: _decoration('Kategori'),
+                              items: namaKategoriList
+                                  .map((k) =>
+                                      DropdownMenuItem(value: k, child: Text(k)))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _kategori = v!),
+                            ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

@@ -26,6 +26,11 @@ class KategoriController extends ChangeNotifier {
   List<Kategori> get rows => List.unmodifiable(_rows);
   int get total => _rows.length;
 
+  /// Daftar nama kategori saja, dipakai oleh dropdown di form Laporan
+  /// dan filter di Kelola Laporan — supaya keduanya selalu sinkron
+  /// dengan data yang dikelola lewat halaman Kelola Kategori.
+  List<String> get namaList => _rows.map((k) => k.nama).toList();
+
   Kategori? getById(String id) {
     for (final k in _rows) {
       if (k.id == id) return k;
