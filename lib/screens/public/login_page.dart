@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       // role_id 1 = Admin -> dashboard admin.
       // role_id lainnya (2 = Warga) -> portal warga.
       final String destination =
-          roleId == 1 ? "/home" : "/warga/buat-laporan";
+          roleId == 1 ? "/admin/dashboard" : "/warga/buat-laporan";
 
       Navigator.pushReplacementNamed(context, destination);
     } else {
@@ -80,7 +80,6 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 const Text(
                   "AUTENTIKASI",
                   style: TextStyle(
@@ -105,10 +104,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const Text(
                   "Gunakan akun untuk melapor dan memantau status laporan Anda.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: Colors.white70, height: 1.5),
                 ),
 
                 const SizedBox(height: 30),
@@ -130,8 +126,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   decoration: InputDecoration(
                     hintText: "nama@email.com",
-                    hintStyle:
-                        const TextStyle(color: Colors.white38),
+                    hintStyle: const TextStyle(color: Colors.white38),
 
                     filled: true,
                     fillColor: backgroundColor,
@@ -160,12 +155,9 @@ class _LoginPageState extends State<LoginPage> {
                   style: const TextStyle(color: Colors.white),
 
                   decoration: InputDecoration(
-
                     hintText: "••••••••",
 
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
 
                     filled: true,
                     fillColor: backgroundColor,
@@ -195,7 +187,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 Row(
                   children: [
-
                     Checkbox(
                       value: rememberMe,
                       activeColor: primaryColor,
@@ -218,11 +209,9 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: () {},
                       child: const Text(
                         "Lupa kata sandi?",
-                        style: TextStyle(
-                          color: primaryColor,
-                        ),
+                        style: TextStyle(color: primaryColor),
                       ),
-                    )
+                    ),
                   ],
                 ),
 
@@ -233,7 +222,6 @@ class _LoginPageState extends State<LoginPage> {
                   height: 50,
 
                   child: ElevatedButton(
-
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.black,
@@ -260,24 +248,18 @@ class _LoginPageState extends State<LoginPage> {
                 ),
 
                 const SizedBox(height: 20),
-                                Center(
+                Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     children: [
-
                       const Text(
                         "Belum punya akun? ",
-                        style: TextStyle(
-                          color: Colors.white70,
-                        ),
+                        style: TextStyle(color: Colors.white70),
                       ),
 
                       GestureDetector(
                         onTap: () {
-                          Navigator.pushReplacementNamed(
-                            context,
-                            "/register",
-                          );
+                          Navigator.pushReplacementNamed(context, "/register");
                         },
                         child: const Text(
                           "Daftar di sini",
@@ -305,9 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     label: const Text(
                       "Kembali ke Beranda",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                 ),

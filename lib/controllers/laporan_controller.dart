@@ -1,19 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../models/laporan_row.dart';
+import '../models/tindak_lanjut.dart';
 import '../utils/status_utils.dart';
 
 /// Sumber data laporan bersama (in-memory).
 ///
 /// Dibuat sebagai SINGLETON (satu-satunya instance untuk seluruh aplikasi)
-/// karena halaman Dashboard dan Kelola Laporan sekarang dinavigasi lewat
-/// named route terpisah (bukan lagi lewat satu shell/parent widget), jadi
-/// keduanya perlu mengambil instance yang SAMA supaya data selalu sinkron.
+/// karena halaman Dashboard, Kelola Laporan, dan Detail Laporan dinavigasi
+/// lewat named route terpisah (bukan lewat satu shell/parent widget), jadi
+/// semuanya perlu mengambil instance yang SAMA supaya data selalu sinkron.
 /// Panggil lewat `LaporanController.instance` di mana pun dibutuhkan.
 ///
 /// Nantinya ketika sudah ada backend/API, method-method di controller ini
 /// tinggal diganti isinya untuk memanggil data source yang sesungguhnya
-/// (mis. HTTP request), sedangkan semua widget yang memakai controller ini
-/// tidak perlu berubah.
+/// (mis. HTTP request ke endpoint Laravel), sedangkan semua widget yang
+/// memakai controller ini tidak perlu berubah.
 class LaporanController extends ChangeNotifier {
   LaporanController._internal();
 
@@ -22,59 +23,107 @@ class LaporanController extends ChangeNotifier {
 
   final List<LaporanRow> _rows = [
     LaporanRow(
-      id: 'JK-0143',
+      id: 'RF-0001',
       judul: 'Jalan Berlubang Besar',
       pelapor: 'Desti R.',
       kategori: 'Berlubang',
-      status: 'BARU',
-      statusColor: statusColorFor('BARU'),
-      tanggal: '03 Jul 2026',
+      status: 'Menunggu Verifikasi',
+      statusColor: statusColorFor('Menunggu Verifikasi'),
+      tanggal: '13 Jul 2026',
+      tingkatKerusakan: 'Berat',
+      alamat: 'Jl. Merdeka No. 12, Bandung',
+      deskripsi:
+          'Lubang cukup dalam dan membahayakan pengendara motor pada malam hari.',
+      lat: -6.9147,
+      lng: 107.6098,
     ),
     LaporanRow(
-      id: 'JK-0142',
+      id: 'RF-0002',
       judul: 'Aspal Retak Parah',
       pelapor: 'Fina F.',
       kategori: 'Retak',
-      status: 'DIPROSES',
-      statusColor: statusColorFor('DIPROSES'),
-      tanggal: '29 Jun 2026',
+      status: 'Diproses',
+      statusColor: statusColorFor('Diproses'),
+      tanggal: '13 Jul 2026',
+      tingkatKerusakan: 'Sedang',
+      alamat: 'Jl. Asia Afrika, Bandung',
+      deskripsi: 'Retakan memanjang sekitar 5 meter di sisi kiri jalan.',
+      lat: -6.9218,
+      lng: 107.6070,
     ),
     LaporanRow(
-      id: 'JK-0141',
+      id: 'RF-0003',
       judul: 'Jembatan Rusak',
       pelapor: 'Gita R.',
       kategori: 'Jembatan',
-      status: 'DIVERIFIKASI',
-      statusColor: statusColorFor('DIVERIFIKASI'),
-      tanggal: '25 Jun 2026',
+      status: 'Diproses',
+      statusColor: statusColorFor('Diproses'),
+      tanggal: '13 Jul 2026',
+      tingkatKerusakan: 'Berat',
+      alamat: 'Jl. Soekarno Hatta, Bandung',
+      deskripsi: 'Sebagian pagar pembatas jembatan roboh.',
+      // Contoh laporan yang sudah punya titik lokasi, supaya peta di halaman
+      // Detail Laporan langsung tampil.
+      lat: -6.9004,
+      lng: 107.6187,
+      tindakLanjuts: [
+        TindakLanjut(
+          id: 1,
+          judul: 'Laporan diverifikasi',
+          keterangan:
+              'Petugas telah meninjau lokasi dan mengonfirmasi kerusakan.',
+          createdAt: DateTime(2026, 7, 14),
+        ),
+        TindakLanjut(
+          id: 2,
+          judul: 'Tim teknis dikirim',
+          keterangan:
+              'Tim Dinas PU dijadwalkan turun ke lokasi untuk perbaikan sementara.',
+          createdAt: DateTime(2026, 7, 15),
+        ),
+      ],
     ),
     LaporanRow(
-      id: 'JK-0140',
+      id: 'RF-0004',
       judul: 'Jalan Ambles Sebagian',
       pelapor: 'Aisyiyah Z.',
       kategori: 'Ambles',
-      status: 'SELESAI',
-      statusColor: statusColorFor('SELESAI'),
-      tanggal: '18 Jun 2026',
+      status: 'Selesai',
+      statusColor: statusColorFor('Selesai'),
+      tanggal: '13 Jul 2026',
+      tingkatKerusakan: 'Ringan',
+      alamat: 'Jl. Dago, Bandung',
+      deskripsi: 'Penurunan permukaan jalan sekitar 5 cm, sudah ditangani.',
+      lat: -6.8951,
+      lng: 107.6134,
     ),
   ];
 
-  int _sequence = 143;
+  int _sequence = 4;
 
   /// Read: daftar semua laporan (urut terbaru dulu).
   List<LaporanRow> get rows => List.unmodifiable(_rows);
 
   int get total => _rows.length;
-  int get menungguVerifikasi => _rows.where((r) => r.status == 'BARU').length;
-  int get sedangDiproses => _rows.where((r) => r.status == 'DIPROSES').length;
-  int get selesai => _rows.where((r) => r.status == 'SELESAI').length;
+  int get menungguVerifikasi =>
+      _rows.where((r) => r.status == 'Menunggu Verifikasi').length;
+  int get sedangDiproses => _rows.where((r) => r.status == 'Diproses').length;
+  int get selesai => _rows.where((r) => r.status == 'Selesai').length;
 
   /// 4 laporan paling baru untuk ditampilkan di dashboard.
   List<LaporanRow> get terbaru => _rows.take(4).toList();
 
+  /// Cari 1 laporan berdasarkan ID (dipakai halaman Detail Laporan).
+  LaporanRow? getById(String id) {
+    for (final r in _rows) {
+      if (r.id == id) return r;
+    }
+    return null;
+  }
+
   String _generateId() {
     _sequence += 1;
-    return 'JK-${_sequence.toString().padLeft(4, '0')}';
+    return 'RF-${_sequence.toString().padLeft(4, '0')}';
   }
 
   /// Create
@@ -84,6 +133,9 @@ class LaporanController extends ChangeNotifier {
     required String kategori,
     required String status,
     required String tanggal,
+    String tingkatKerusakan = 'Sedang',
+    String alamat = '-',
+    String deskripsi = '-',
   }) {
     _rows.insert(
       0,
@@ -95,6 +147,9 @@ class LaporanController extends ChangeNotifier {
         status: status,
         statusColor: statusColorFor(status),
         tanggal: tanggal,
+        tingkatKerusakan: tingkatKerusakan,
+        alamat: alamat,
+        deskripsi: deskripsi,
       ),
     );
     notifyListeners();
@@ -108,6 +163,9 @@ class LaporanController extends ChangeNotifier {
     required String kategori,
     required String status,
     required String tanggal,
+    String? tingkatKerusakan,
+    String? alamat,
+    String? deskripsi,
   }) {
     final index = _rows.indexWhere((r) => r.id == id);
     if (index == -1) return;
@@ -118,6 +176,9 @@ class LaporanController extends ChangeNotifier {
       status: status,
       statusColor: statusColorFor(status),
       tanggal: tanggal,
+      tingkatKerusakan: tingkatKerusakan,
+      alamat: alamat,
+      deskripsi: deskripsi,
     );
     notifyListeners();
   }
@@ -136,6 +197,32 @@ class LaporanController extends ChangeNotifier {
   /// Delete
   void hapusLaporan(String id) {
     _rows.removeWhere((r) => r.id == id);
+    notifyListeners();
+  }
+
+  int _tindakLanjutSequence = 100;
+
+  /// Tambah satu entri riwayat tindak lanjut ke laporan [laporanId].
+  /// Dipanggil dari tab "Riwayat Tindak Lanjut" di halaman Detail Laporan.
+  void tambahTindakLanjut(
+    String laporanId, {
+    required String judul,
+    required String keterangan,
+  }) {
+    final index = _rows.indexWhere((r) => r.id == laporanId);
+    if (index == -1) return;
+
+    _tindakLanjutSequence += 1;
+    final baru = TindakLanjut(
+      id: _tindakLanjutSequence,
+      judul: judul,
+      keterangan: keterangan,
+      createdAt: DateTime.now(),
+    );
+
+    _rows[index] = _rows[index].copyWith(
+      tindakLanjuts: [..._rows[index].tindakLanjuts, baru],
+    );
     notifyListeners();
   }
 }

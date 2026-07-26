@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'theme/app_colors.dart';
 import 'screens/public/landing_page.dart';
 import 'screens/public/login_page.dart';
 import 'screens/public/register_page.dart';
 import 'screens/admin/dashboard_page.dart';
+import 'screens/admin/manage_report_page.dart';
+import 'screens/admin/manage_category_page.dart';
+import 'screens/admin/detail_laporan_page.dart';
 import 'screens/warga/buat_laporan_screen.dart';
 import 'screens/warga/riwayat_laporan_screen.dart';
 
@@ -23,6 +27,12 @@ class RoadFixApp extends StatelessWidget {
       theme: ThemeData(
         colorSchemeSeed: Colors.orange,
         useMaterial3: true,
+        // Sebelumnya brightness tidak diset -> Flutter otomatis pakai tema
+        // TERANG bawaan Material 3, jadi Scaffold yang tidak memberi
+        // `backgroundColor` sendiri (dashboard/manage-report/detail-laporan)
+        // ikut jadi putih. Dua baris ini memastikan default-nya gelap.
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.bgDark,
       ),
 
       initialRoute: '/',
@@ -31,7 +41,10 @@ class RoadFixApp extends StatelessWidget {
         '/': (context) => const LandingPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/home': (context) => const DashboardPage(),
+        '/admin/dashboard': (context) => const DashboardPage(),
+        '/admin/manage-report': (context) => const ManageReportPage(),
+        '/admin/manage-category': (context) => const ManageCategoryPage(),
+        '/admin/detail-laporan': (context) => const DetailLaporanPage(),
         '/warga/buat-laporan': (context) => const BuatLaporanScreen(),
         '/warga/riwayat-laporan': (context) => const RiwayatLaporanScreen(),
       },

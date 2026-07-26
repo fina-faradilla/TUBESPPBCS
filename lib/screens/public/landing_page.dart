@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tubesppbcs/screens/public/login_page.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
@@ -210,7 +209,7 @@ class LandingPage extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 40),
+const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -394,7 +393,7 @@ class StepCard extends StatelessWidget {
         border: Border.all(color: Colors.white10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.25),
+            color: Colors.black.withValues(alpha: .25),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -409,7 +408,7 @@ class StepCard extends StatelessWidget {
               vertical: 6,
             ),
             decoration: BoxDecoration(
-              color: color.withOpacity(.18),
+              color: color.withValues(alpha: .18),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Text(
