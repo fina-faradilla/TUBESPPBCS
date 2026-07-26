@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
-import '../../models/kategori.dart';
-import '../../controllers/kategori_controller.dart';
+import '../../models/kategori_option.dart';
+import '../../utils/kategori_api.dart';
+import '../../utils/responsive.dart';
 import '../../widgets/sidebar.dart';
 import '../../widgets/top_bar.dart';
 import '../../widgets/card_container.dart';
 import '../../widgets/kategori_form_dialog.dart';
-import '../../utils/responsive.dart';
 
 /// Route: '/admin/manage-category'
 class ManageCategoryPage extends StatefulWidget {
@@ -17,7 +17,9 @@ class ManageCategoryPage extends StatefulWidget {
 }
 
 class _ManageCategoryPageState extends State<ManageCategoryPage> {
-  final KategoriController _controller = KategoriController.instance;
+  List<KategoriOption> _rows = [];
+  bool _loading = true;
+  String? _error;
 
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -25,52 +27,88 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_onChanged);
     _searchCtrl.addListener(() {
       setState(() => _query = _searchCtrl.text.trim().toLowerCase());
     });
+    _muatData();
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _onChanged() => setState(() {});
+  Future<void> _muatData() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await KategoriApi.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _rows = data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
-  List<Kategori> get _filteredRows {
-    return _controller.rows.where((k) {
+  List<KategoriOption> get _filteredRows {
+    return _rows.where((k) {
       return _query.isEmpty ||
           k.nama.toLowerCase().contains(_query) ||
-          k.id.toLowerCase().contains(_query);
+          k.id.toString().contains(_query);
     }).toList();
   }
 
   Future<void> _tambahKategori() async {
     final result = await showKategoriFormDialog(context);
     if (result == null) return;
-    _controller.tambahKategori(nama: result.nama, deskripsi: result.deskripsi);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kategori baru berhasil ditambahkan')),
-      );
+    try {
+      await KategoriApi.create(nama: result.nama, deskripsi: result.deskripsi);
+      await _muatData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kategori baru berhasil ditambahkan')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menambahkan kategori: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _ubahKategori(Kategori row) async {
+  Future<void> _ubahKategori(KategoriOption row) async {
     final result = await showKategoriFormDialog(context, existing: row);
     if (result == null) return;
-    _controller.ubahKategori(row.id, nama: result.nama, deskripsi: result.deskripsi);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kategori berhasil diubah')),
-      );
+    try {
+      await KategoriApi.update(row.id, nama: result.nama, deskripsi: result.deskripsi);
+      await _muatData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kategori berhasil diubah')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengubah kategori: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _hapusKategori(Kategori row) async {
+  Future<void> _hapusKategori(KategoriOption row) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -82,7 +120,7 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
         title: const Text('Hapus Kategori?',
             style: TextStyle(color: AppColors.textPrimary)),
         content: Text(
-          'Kategori "${row.nama}" (${row.id}) akan dihapus permanen. Lanjutkan?',
+          'Kategori "${row.nama}" akan dihapus permanen. Lanjutkan?',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
@@ -99,11 +137,20 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
         ],
       ),
     );
-    if (confirm == true) {
-      _controller.hapusKategori(row.id);
+    if (confirm != true) return;
+
+    try {
+      await KategoriApi.delete(row.id);
+      await _muatData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Kategori berhasil dihapus')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus kategori: $e')),
         );
       }
     }
@@ -184,7 +231,39 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
                   ],
 
                   // Baris data
-                  if (rows.isEmpty)
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Gagal memuat kategori: $_error',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: Colors.redAccent, fontSize: 13),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _muatData,
+                              child: const Text('Coba Lagi'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (rows.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 32),
                       child: Center(
@@ -215,7 +294,7 @@ class _ManageCategoryPageState extends State<ManageCategoryPage> {
 
                   const SizedBox(height: 20),
                   Text(
-                    'Menampilkan ${rows.length} dari ${_controller.total} kategori',
+                    'Menampilkan ${rows.length} dari ${_rows.length} kategori',
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                 ],
@@ -310,7 +389,7 @@ class _AksiIcon extends StatelessWidget {
 }
 
 class _TableDataRow extends StatelessWidget {
-  final Kategori row;
+  final KategoriOption row;
   final VoidCallback onEdit;
   final VoidCallback onHapus;
 
@@ -327,7 +406,7 @@ class _TableDataRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(flex: 2, child: Text(row.id, style: textStyle)),
+        Expanded(flex: 2, child: Text('#${row.id}', style: textStyle)),
         Expanded(
           flex: 3,
           child: Text(row.nama,
@@ -367,10 +446,9 @@ class _TableDataRow extends StatelessWidget {
   }
 }
 
-/// Versi kartu dari satu baris kategori, dipakai saat layar sempit (HP)
-/// supaya tidak perlu memampatkan 4 kolom tabel ke lebar yang tidak cukup.
+/// Versi kartu dari satu baris kategori, dipakai saat layar sempit (HP).
 class _CategoryCard extends StatelessWidget {
-  final Kategori row;
+  final KategoriOption row;
   final VoidCallback onEdit;
   final VoidCallback onHapus;
 
@@ -399,7 +477,7 @@ class _CategoryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(row.id,
+                    Text('#${row.id}',
                         style: const TextStyle(
                             color: AppColors.textSecondary, fontSize: 11)),
                     const SizedBox(height: 2),

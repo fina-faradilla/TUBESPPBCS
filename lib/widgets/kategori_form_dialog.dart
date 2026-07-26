@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/kategori.dart';
+import '../models/kategori_option.dart';
 import '../theme/app_colors.dart';
 
 /// Hasil submit form: nama & deskripsi kategori.
@@ -14,7 +14,7 @@ class KategoriFormResult {
 /// Jika [existing] diisi maka form dalam mode "Ubah", jika null mode "Tambah".
 Future<KategoriFormResult?> showKategoriFormDialog(
   BuildContext context, {
-  Kategori? existing,
+  KategoriOption? existing,
 }) {
   return showDialog<KategoriFormResult>(
     context: context,
@@ -23,7 +23,7 @@ Future<KategoriFormResult?> showKategoriFormDialog(
 }
 
 class _KategoriFormDialog extends StatefulWidget {
-  final Kategori? existing;
+  final KategoriOption? existing;
   const _KategoriFormDialog({this.existing});
 
   @override
@@ -42,7 +42,9 @@ class _KategoriFormDialogState extends State<_KategoriFormDialog> {
     super.initState();
     final e = widget.existing;
     _namaCtrl = TextEditingController(text: e?.nama ?? '');
-    _deskripsiCtrl = TextEditingController(text: e?.deskripsi ?? '');
+    _deskripsiCtrl = TextEditingController(
+      text: (e?.deskripsi != null && e!.deskripsi != '-') ? e.deskripsi : '',
+    );
   }
 
   @override
@@ -78,9 +80,7 @@ class _KategoriFormDialogState extends State<_KategoriFormDialog> {
     Navigator.of(context).pop(
       KategoriFormResult(
         nama: _namaCtrl.text.trim(),
-        deskripsi: _deskripsiCtrl.text.trim().isEmpty
-            ? '-'
-            : _deskripsiCtrl.text.trim(),
+        deskripsi: _deskripsiCtrl.text.trim(),
       ),
     );
   }

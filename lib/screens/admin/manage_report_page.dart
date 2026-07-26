@@ -9,7 +9,7 @@ import '../../widgets/card_container.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/laporan_form_dialog.dart';
 import '../../utils/responsive.dart';
-import '../../controllers/kategori_controller.dart';
+import '../../utils/kategori_api.dart';
 
 /// Route: '/admin/manage-report'
 class ManageReportPage extends StatefulWidget {
@@ -21,27 +21,43 @@ class ManageReportPage extends StatefulWidget {
 
 class _ManageReportPageState extends State<ManageReportPage> {
   final LaporanController _controller = LaporanController.instance;
-  final KategoriController _kategoriController = KategoriController.instance;
 
   final _searchCtrl = TextEditingController();
   String _query = '';
   String _filterKategori = 'Semua Kategori';
   String _filterStatus = 'Semua Status';
 
+  // Daftar nama kategori untuk filter, diambil dari backend asli (bukan
+  // lagi data lokal) supaya konsisten dengan kategori yang benar-benar
+  // dipakai laporan.
+  List<String> _namaKategoriFilter = [];
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onChanged);
-    _kategoriController.addListener(_onChanged);
     _searchCtrl.addListener(() {
       setState(() => _query = _searchCtrl.text.trim().toLowerCase());
     });
+    _muatKategoriFilter();
+    _controller.muatData();
+  }
+
+  Future<void> _muatKategoriFilter() async {
+    try {
+      final data = await KategoriApi.fetchAll();
+      if (!mounted) return;
+      setState(() => _namaKategoriFilter = data.map((k) => k.nama).toList());
+    } catch (_) {
+      // Gagal diam-diam — filter kategori cukup tampil "Semua Kategori"
+      // saja kalau daftar kategori gagal dimuat; tidak menghalangi
+      // halaman lain untuk tetap dipakai.
+    }
   }
 
   @override
   void dispose() {
     _controller.removeListener(_onChanged);
-    _kategoriController.removeListener(_onChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -65,41 +81,61 @@ class _ManageReportPageState extends State<ManageReportPage> {
   Future<void> _tambahLaporan() async {
     final result = await showLaporanFormDialog(context);
     if (result == null) return;
-    _controller.tambahLaporan(
-      judul: result.judul,
-      pelapor: result.pelapor,
-      kategori: result.kategori,
-      status: result.status,
-      tanggal: result.tanggal,
-      tingkatKerusakan: result.tingkatKerusakan,
-      alamat: result.alamat,
-      deskripsi: result.deskripsi,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Laporan baru berhasil ditambahkan')),
+    try {
+      await _controller.tambahLaporan(
+        judul: result.judul,
+        pelapor: result.pelapor,
+        kategoriId: result.kategoriId,
+        status: result.status,
+        tingkatKerusakan: result.tingkatKerusakan,
+        alamat: result.alamat,
+        deskripsi: result.deskripsi,
+        lat: result.lat,
+        lng: result.lng,
+        fotoBytes: result.fotoBytes,
+        fotoFileName: result.fotoFileName,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Laporan baru berhasil ditambahkan')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menambahkan laporan: $e')),
+        );
+      }
     }
   }
 
   Future<void> _ubahLaporan(LaporanRow row) async {
     final result = await showLaporanFormDialog(context, existing: row);
     if (result == null) return;
-    _controller.ubahLaporan(
-      row.id,
-      judul: result.judul,
-      pelapor: result.pelapor,
-      kategori: result.kategori,
-      status: result.status,
-      tanggal: result.tanggal,
-      tingkatKerusakan: result.tingkatKerusakan,
-      alamat: result.alamat,
-      deskripsi: result.deskripsi,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Laporan berhasil diubah')),
+    try {
+      await _controller.ubahLaporan(
+        row.id,
+        judul: result.judul,
+        pelapor: result.pelapor,
+        kategoriId: result.kategoriId,
+        status: result.status,
+        tingkatKerusakan: result.tingkatKerusakan,
+        alamat: result.alamat,
+        deskripsi: result.deskripsi,
+        lat: result.lat,
+        lng: result.lng,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Laporan berhasil diubah')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengubah laporan: $e')),
+        );
+      }
     }
   }
 
@@ -133,11 +169,19 @@ class _ManageReportPageState extends State<ManageReportPage> {
       ),
     );
     if (confirm == true) {
-      _controller.hapusLaporan(row.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Laporan berhasil dihapus')),
-        );
+      try {
+        await _controller.hapusLaporan(row.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Laporan berhasil dihapus')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghapus laporan: $e')),
+          );
+        }
       }
     }
   }
@@ -146,11 +190,21 @@ class _ManageReportPageState extends State<ManageReportPage> {
     Navigator.of(context).pushNamed('/admin/detail-laporan', arguments: row.id);
   }
 
-  void _verifikasiLaporan(LaporanRow row) {
-    // Alur sederhana: BARU -> DIVERIFIKASI -> DIPROSES -> SELESAI
-    final idx = kStatusOptions.indexOf(row.status);
-    if (idx == -1 || idx == kStatusOptions.length - 1) return;
-    _controller.ubahStatus(row.id, kStatusOptions[idx + 1]);
+  Future<void> _verifikasiLaporan(LaporanRow row) async {
+    try {
+      await _controller.verifikasiLaporan(row.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Laporan berhasil diverifikasi')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal verifikasi laporan: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -194,7 +248,7 @@ class _ManageReportPageState extends State<ManageReportPage> {
 
     final kategoriDropdown = _FilterDropdown(
       value: _filterKategori,
-      options: ['Semua Kategori', ..._kategoriController.namaList],
+      options: ['Semua Kategori', ..._namaKategoriFilter],
       onChanged: (v) => setState(() => _filterKategori = v),
     );
     final statusDropdown = _FilterDropdown(
@@ -265,7 +319,39 @@ class _ManageReportPageState extends State<ManageReportPage> {
                   ],
 
                   // Baris data
-                  if (rows.isEmpty)
+                  if (_controller.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (_controller.error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Gagal memuat laporan: ${_controller.error}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: Colors.redAccent, fontSize: 13),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () => _controller.muatData(force: true),
+                              child: const Text('Coba Lagi'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (rows.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 32),
                       child: Center(

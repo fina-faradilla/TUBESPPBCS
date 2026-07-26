@@ -10,8 +10,23 @@ import '../../widgets/laporan_terbaru_item.dart';
 import '../../utils/responsive.dart';
 
 /// Route: '/admin/dashboard'
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Dashboard sebelumnya cuma menampilkan apa pun yang kebetulan sudah
+    // ada di memori (LaporanController._rows) — tidak pernah benar-benar
+    // ambil data dari server. Ini yang bikin datanya "hilang" tiap kali
+    // controller-nya kosong lagi (mis. setelah logout/login ulang).
+    LaporanController.instance.muatData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +194,41 @@ class DashboardPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (controller.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      )
+                    else if (controller.error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgDark,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.redAccent),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Gagal memuat data: ${controller.error}',
+                                  style: const TextStyle(
+                                      color: Colors.redAccent, fontSize: 12),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    controller.muatData(force: true),
+                                child: const Text('Coba Lagi',
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     statSection,
                     const SizedBox(height: 20),
                     bottomSection,

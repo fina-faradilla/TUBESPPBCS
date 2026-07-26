@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../utils/auth_storage.dart';
 
 /// Sidebar navigasi utama aplikasi (khusus area Portal Admin/Dinas).
 ///
@@ -129,7 +130,9 @@ class _SidebarState extends State<Sidebar> {
               // Untuk sementara diarahkan ke halaman landing.
               _LogoutItem(
                 collapsed: _collapsed,
-                onTap: () {
+                onTap: () async {
+                  await AuthStorage.clearToken();
+                  if (!context.mounted) return;
                   Navigator.of(context).pushReplacementNamed('/');
                 },
               ),
@@ -254,7 +257,9 @@ class _NavItem extends StatelessWidget {
                       style: TextStyle(
                         color: active ? Colors.black : AppColors.textPrimary,
                         fontSize: 13,
-                        fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: active
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -298,8 +303,9 @@ class _LogoutItem extends StatelessWidget {
             horizontal: collapsed ? 0 : 12,
           ),
           child: Row(
-            mainAxisAlignment:
-                collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+            mainAxisAlignment: collapsed
+                ? MainAxisAlignment.center
+                : MainAxisAlignment.start,
             children: [
               const Icon(
                 Icons.logout_rounded,
@@ -310,10 +316,7 @@ class _LogoutItem extends StatelessWidget {
                 SizedBox(width: 12),
                 Text(
                   'Logout',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
                 ),
               ],
             ],
