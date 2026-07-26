@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../models/laporan_row.dart';
-import '../models/tindak_lanjut.dart';
 import '../utils/laporan_api.dart';
 
 class LaporanController extends ChangeNotifier {
@@ -119,43 +118,22 @@ class LaporanController extends ChangeNotifier {
     notifyListeners();
   }
 
-  int _tindakLanjutSequence = 100;
-
   /// Tambah satu entri riwayat tindak lanjut ke laporan [laporanId].
   /// Dipanggil dari tab "Riwayat Tindak Lanjut" di halaman Detail Laporan.
-  void tambahTindakLanjut(
+  /// Dikirim ke backend (bukan cuma diubah di state lokal) supaya warga
+  /// yang bersangkutan juga bisa lihat perkembangannya.
+  Future<void> tambahTindakLanjut(
     String laporanId, {
-    required String judul,
-    required String keterangan,
-  }) {
+    required String status,
+    required String catatan,
+  }) async {
+    final updated = await LaporanApi.tambahTindakLanjut(
+      laporanId,
+      status: status,
+      catatan: catatan,
+    );
     final index = _rows.indexWhere((r) => r.id == laporanId);
-    if (index == -1) return;
-
-    _tindakLanjutSequence += 1;
-    final baru = TindakLanjut(
-      id: _tindakLanjutSequence,
-      judul: judul,
-      keterangan: keterangan,
-      createdAt: DateTime.now(),
-    );
-
-    final old = _rows[index];
-    _rows[index] = LaporanRow(
-      id: old.id,
-      judul: old.judul,
-      pelapor: old.pelapor,
-      kategori: old.kategori,
-      status: old.status,
-      statusColor: old.statusColor,
-      tanggal: old.tanggal,
-      tingkatKerusakan: old.tingkatKerusakan,
-      alamat: old.alamat,
-      deskripsi: old.deskripsi,
-      fotoPath: old.fotoPath,
-      lat: old.lat,
-      lng: old.lng,
-      tindakLanjuts: [...old.tindakLanjuts, baru],
-    );
+    if (index != -1) _rows[index] = updated;
     notifyListeners();
   }
 }

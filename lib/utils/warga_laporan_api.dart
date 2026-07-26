@@ -28,6 +28,20 @@ class WargaLaporanApi {
         .toList();
   }
 
+  /// Detail satu laporan (GET /api/laporan/{id}) — dipakai halaman
+  /// Detail Laporan warga supaya dapat data ter-update termasuk
+  /// riwayat tindak lanjut, tanpa perlu muat ulang seluruh daftar.
+  ///
+  /// Kalau endpoint detail ini belum ada di backend, halaman detail akan
+  /// otomatis fallback memakai data dari [fetchMine] yang sudah di-cache
+  /// (lihat WargaLaporanController.getById).
+  static Future<LaporanRow> fetchById(String id) async {
+    final numericId = id.replaceAll(RegExp(r'[^0-9]'), '');
+    final res = await http.get(_u('/$numericId'), headers: await _authHeaders());
+    _throwIfError(res);
+    return LaporanRow.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   /// Buat laporan baru. Status otomatis "Menunggu Verifikasi" dari
   /// backend — warga tidak bisa set status sendiri.
   static Future<LaporanRow> create({

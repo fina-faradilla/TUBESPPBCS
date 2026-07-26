@@ -109,6 +109,23 @@ class LaporanApi {
     return LaporanRow.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  /// POST /admin/laporan/{id}/tindak-lanjut — mencatat perkembangan
+  /// penanganan. Backend juga otomatis memperbarui status laporan supaya
+  /// tetap sinkron dengan yang dilihat warga.
+  static Future<LaporanRow> tambahTindakLanjut(
+    String id, {
+    required String status,
+    required String catatan,
+  }) async {
+    final res = await http.post(
+      _u('/${_numericId(id)}/tindak-lanjut'),
+      headers: await _authHeaders(json: true),
+      body: jsonEncode({'status': status, 'catatan': catatan}),
+    );
+    _throwIfError(res);
+    return LaporanRow.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   static Future<void> delete(String id) async {
     final res = await http.delete(
       _u('/${_numericId(id)}'),

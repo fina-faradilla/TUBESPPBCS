@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-/// Hasil submit form: judul & keterangan tindak lanjut.
+/// Hasil submit form: status baru & catatan tindak lanjut.
 class TindakLanjutFormResult {
-  final String judul;
-  final String keterangan;
+  final String status;
+  final String catatan;
 
-  TindakLanjutFormResult({required this.judul, required this.keterangan});
+  TindakLanjutFormResult({required this.status, required this.catatan});
 }
 
 /// Menampilkan dialog form "Tambah Tindak Lanjut" untuk sebuah laporan.
@@ -29,13 +29,14 @@ class _TindakLanjutFormDialog extends StatefulWidget {
 
 class _TindakLanjutFormDialogState extends State<_TindakLanjutFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _judulCtrl = TextEditingController();
-  final _keteranganCtrl = TextEditingController();
+  final _catatanCtrl = TextEditingController();
+  String _status = 'Diproses';
+
+  static const List<String> _statusOptions = ['Diproses', 'Selesai'];
 
   @override
   void dispose() {
-    _judulCtrl.dispose();
-    _keteranganCtrl.dispose();
+    _catatanCtrl.dispose();
     super.dispose();
   }
 
@@ -64,8 +65,8 @@ class _TindakLanjutFormDialogState extends State<_TindakLanjutFormDialog> {
     if (!_formKey.currentState!.validate()) return;
     Navigator.of(context).pop(
       TindakLanjutFormResult(
-        judul: _judulCtrl.text.trim(),
-        keterangan: _keteranganCtrl.text.trim(),
+        status: _status,
+        catatan: _catatanCtrl.text.trim(),
       ),
     );
   }
@@ -105,21 +106,26 @@ class _TindakLanjutFormDialogState extends State<_TindakLanjutFormDialog> {
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: _judulCtrl,
+                DropdownButtonFormField<String>(
+                  value: _status,
+                  dropdownColor: AppColors.cardBg,
                   style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _decoration('Judul Tindak Lanjut'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Judul wajib diisi' : null,
+                  decoration: _decoration('Status Baru'),
+                  items: _statusOptions
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _status = v);
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
-                  controller: _keteranganCtrl,
+                  controller: _catatanCtrl,
                   maxLines: 4,
                   style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _decoration('Keterangan'),
+                  decoration: _decoration('Catatan'),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Keterangan wajib diisi'
+                      ? 'Catatan wajib diisi'
                       : null,
                 ),
                 const SizedBox(height: 24),

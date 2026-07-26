@@ -48,7 +48,7 @@ class SidebarMenu extends StatelessWidget {
           for (final item in items)
             _item(item.label, item.icon, item.onTap, activeItem == item.label),
           if (onLogout != null) ...[
-            const SizedBox(height: 16),
+             const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Divider(color: AppColors.cardBorder, height: 1),
@@ -166,7 +166,7 @@ class SidebarMenu extends StatelessWidget {
             Icon(Icons.logout, size: 16, color: Colors.redAccent),
             SizedBox(width: 10),
             Text(
-              'Keluar',
+              'Logout',
               style: TextStyle(color: Colors.redAccent, fontSize: 13),
             ),
           ],

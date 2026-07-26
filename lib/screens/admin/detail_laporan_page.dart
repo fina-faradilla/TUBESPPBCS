@@ -436,11 +436,19 @@ class _RiwayatTab extends StatelessWidget {
   Future<void> _tambah(BuildContext context) async {
     final result = await showTindakLanjutFormDialog(context);
     if (result == null) return;
-    controller.tambahTindakLanjut(
-      laporanId,
-      judul: result.judul,
-      keterangan: result.keterangan,
-    );
+    try {
+      await controller.tambahTindakLanjut(
+        laporanId,
+        status: result.status,
+        catatan: result.catatan,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan tindak lanjut: $e')),
+        );
+      }
+    }
   }
 
   Widget _tombolTambah(BuildContext context) {
@@ -516,18 +524,40 @@ class _RiwayatTab extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.judul,
-                          style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(t.keterangan,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (t.status == 'Selesai'
+                                      ? Colors.green
+                                      : Colors.blue)
+                                  .withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              t.status,
+                              style: TextStyle(
+                                color: t.status == 'Selesai'
+                                    ? Colors.green
+                                    : Colors.blue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(t.catatan,
                           style: const TextStyle(
                               color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
                       const SizedBox(height: 4),
                       Text(
-                        _formatTanggal(t.createdAt),
+                        t.admin != null
+                            ? '${_formatTanggal(t.createdAt)} · ${t.admin}'
+                            : _formatTanggal(t.createdAt),
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                       ),
                     ],

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../controllers/warga_laporan_controller.dart';
 import '../../models/laporan_row.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/auth_storage.dart';
 import '../../utils/status_utils.dart';
-import '../../utils/warga_laporan_api.dart';
+import '../../utils/responsive.dart';
 import '../../widgets/sidebar_menu.dart';
 
 /// Halaman "Riwayat Laporan Saya" — daftar seluruh laporan yang
@@ -17,46 +18,30 @@ class RiwayatLaporanScreen extends StatefulWidget {
 }
 
 class _RiwayatLaporanScreenState extends State<RiwayatLaporanScreen> {
+  final _controller = WargaLaporanController.instance;
   final _searchController = TextEditingController();
   String _statusFilter = 'Semua Status';
-
-  List<LaporanRow> _rows = [];
-  bool _loading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _muatData();
+    _controller.addListener(_onChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _controller.muatData());
     _searchController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _muatData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final data = await WargaLaporanApi.fetchMine();
-      if (!mounted) return;
-      setState(() => _rows = data);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+  void _onChanged() => setState(() {});
 
   List<LaporanRow> get _filteredList {
     final query = _searchController.text.trim().toLowerCase();
-    return _rows.where((l) {
+    return _controller.rows.where((l) {
       final matchesQuery =
           query.isEmpty ||
           l.judul.toLowerCase().contains(query) ||
@@ -107,6 +92,171 @@ class _RiwayatLaporanScreenState extends State<RiwayatLaporanScreen> {
   @override
   Widget build(BuildContext context) {
     final rows = _filteredList;
+    final bool mobile = isMobileWidth(context);
+
+    final sidebarItems = [
+      SidebarMenuItem(
+        label: 'Buat Laporan',
+        icon: Icons.add_circle_outline,
+        onTap: () => Navigator.of(
+          context,
+        ).pushReplacementNamed('/warga/buat-laporan'),
+      ),
+      SidebarMenuItem(
+        label: 'Riwayat Laporan Saya',
+        icon: Icons.history,
+        onTap: () {},
+      ),
+    ];
+
+    final Widget content = SingleChildScrollView(
+      padding: EdgeInsets.all(mobile ? 16 : 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PORTAL WARGA',
+            style: TextStyle(
+              color: AppColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'RIWAYAT LAPORAN SAYA',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Pantau status seluruh laporan yang pernah Anda ajukan.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (_controller.error != null)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.redAccent),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 16,
+                    color: Colors.redAccent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _controller.error!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _controller.muatData(force: true),
+                    child: const Text('Coba Lagi'),
+                  ),
+                ],
+              ),
+            ),
+          Container(
+            padding: EdgeInsets.all(mobile ? 12 : 20),
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildToolbar(),
+                const SizedBox(height: 16),
+                if (!mobile) ...[
+                  _buildTableHeader(),
+                  const Divider(color: AppColors.cardBorder, height: 1),
+                ],
+                if (_controller.isLoading && rows.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (rows.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: Text(
+                        'Belum ada laporan yang cocok.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  for (final laporan in rows)
+                    mobile
+                        ? _buildTableCardMobile(laporan)
+                        : _buildTableRow(laporan),
+                const SizedBox(height: 12),
+                Text(
+                  'Menampilkan ${rows.length} dari ${_controller.total} laporan',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (mobile) {
+      return Scaffold(
+        backgroundColor: AppColors.bgDark,
+        appBar: AppBar(
+          backgroundColor: AppColors.sidebarBg,
+          iconTheme: const IconThemeData(color: AppColors.textPrimary),
+          title: const Text('RoadFix',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ),
+        drawer: Drawer(
+          backgroundColor: Colors.transparent,
+          child: SidebarMenu(
+            activeItem: 'Riwayat Laporan Saya',
+            onLogout: _logout,
+            items: sidebarItems,
+          ),
+        ),
+        body: content,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bgDark,
@@ -116,145 +266,9 @@ class _RiwayatLaporanScreenState extends State<RiwayatLaporanScreen> {
           SidebarMenu(
             activeItem: 'Riwayat Laporan Saya',
             onLogout: _logout,
-            items: [
-              SidebarMenuItem(
-                label: 'Buat Laporan',
-                icon: Icons.add_circle_outline,
-                onTap: () => Navigator.of(
-                  context,
-                ).pushReplacementNamed('/warga/buat-laporan'),
-              ),
-              SidebarMenuItem(
-                label: 'Riwayat Laporan Saya',
-                icon: Icons.history,
-                onTap: () {},
-              ),
-            ],
+            items: sidebarItems,
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'PORTAL WARGA',
-                    style: TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'RIWAYAT LAPORAN SAYA',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Pantau status seluruh laporan yang pernah Anda ajukan.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  if (_error != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.redAccent),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            size: 16,
-                            color: Colors.redAccent,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: const TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _muatData,
-                            child: const Text('Coba Lagi'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.cardBorder),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildToolbar(),
-                        const SizedBox(height: 16),
-                        _buildTableHeader(),
-                        const Divider(color: AppColors.cardBorder, height: 1),
-                        if (_loading && rows.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (rows.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                'Belum ada laporan yang cocok.',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          for (final laporan in rows) _buildTableRow(laporan),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Menampilkan ${rows.length} dari ${_rows.length} laporan',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          Expanded(child: content),
         ],
       ),
     );
@@ -321,52 +335,114 @@ class _RiwayatLaporanScreenState extends State<RiwayatLaporanScreen> {
     );
   }
 
-  Widget _buildTableRow(LaporanRow laporan) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              laporan.judul,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+  Widget _buildTableCardMobile(LaporanRow laporan) {
+    return InkWell(
+      onTap: () => Navigator.of(context).pushNamed(
+        '/warga/detail-laporan',
+        arguments: laporan.id,
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bgDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    laporan.judul,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                _StatusBadge(status: laporan.status, color: laporan.statusColor),
+              ],
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
+            const SizedBox(height: 6),
+            Text(
               laporan.alamat,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
-              maxLines: 1,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
+            const SizedBox(height: 6),
+            Text(
               laporan.tanggal,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableRow(LaporanRow laporan) {
+    return InkWell(
+      onTap: () => Navigator.of(context).pushNamed(
+        '/warga/detail-laporan',
+        arguments: laporan.id,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                laporan.judul,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: _StatusBadge(
-              status: laporan.status,
-              color: laporan.statusColor,
+            Expanded(
+              flex: 2,
+              child: Text(
+                laporan.alamat,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 2,
+              child: Text(
+                laporan.tanggal,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: _StatusBadge(
+                status: laporan.status,
+                color: laporan.statusColor,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }

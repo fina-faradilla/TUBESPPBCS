@@ -10,6 +10,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/auth_storage.dart';
 import '../../utils/kategori_api.dart';
 import '../../utils/warga_laporan_api.dart';
+import '../../utils/responsive.dart';
 import '../../widgets/sidebar_menu.dart';
 
 /// Halaman "Buat Laporan Baru" — form warga untuk melaporkan
@@ -235,6 +236,133 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool mobile = isMobileWidth(context);
+
+    final sidebarItems = [
+      SidebarMenuItem(
+        label: 'Buat Laporan',
+        icon: Icons.add_circle_outline,
+        onTap: () {},
+      ),
+      SidebarMenuItem(
+        label: 'Riwayat Laporan Saya',
+        icon: Icons.history,
+        onTap: () => Navigator.of(
+          context,
+        ).pushReplacementNamed('/warga/riwayat-laporan'),
+      ),
+    ];
+
+    final Widget content = SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PORTAL WARGA',
+              style: TextStyle(
+                color: AppColors.gold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'BUAT LAPORAN BARU',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Isi detail kerusakan jalan selengkap mungkin agar '
+              'dinas dapat menindaklanjuti dengan cepat.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 24),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 760;
+                final formColumn = _buildFormColumn();
+                final sideColumn = _buildSideColumn();
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: formColumn),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 2, child: sideColumn),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    formColumn,
+                    const SizedBox(height: 24),
+                    sideColumn,
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submit,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('Kirim Laporan'),
+                ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                  ),
+                  child: const Text('Batalkan'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (mobile) {
+      return Scaffold(
+        backgroundColor: AppColors.bgDark,
+        appBar: AppBar(
+          backgroundColor: AppColors.sidebarBg,
+          iconTheme: const IconThemeData(color: AppColors.textPrimary),
+          title: const Text('RoadFix',
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+        ),
+        drawer: Drawer(
+          backgroundColor: Colors.transparent,
+          child: SidebarMenu(
+            activeItem: 'Buat Laporan',
+            onLogout: _logout,
+            items: sidebarItems,
+          ),
+        ),
+        body: content,
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       body: Row(
@@ -243,111 +371,9 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
           SidebarMenu(
             activeItem: 'Buat Laporan',
             onLogout: _logout,
-            items: [
-              SidebarMenuItem(
-                label: 'Buat Laporan',
-                icon: Icons.add_circle_outline,
-                onTap: () {},
-              ),
-              SidebarMenuItem(
-                label: 'Riwayat Laporan Saya',
-                icon: Icons.history,
-                onTap: () => Navigator.of(
-                  context,
-                ).pushReplacementNamed('/warga/riwayat-laporan'),
-              ),
-            ],
+            items: sidebarItems,
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'PORTAL WARGA',
-                      style: TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'BUAT LAPORAN BARU',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Isi detail kerusakan jalan selengkap mungkin agar '
-                      'dinas dapat menindaklanjuti dengan cepat.',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth > 760;
-                        final formColumn = _buildFormColumn();
-                        final sideColumn = _buildSideColumn();
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(flex: 3, child: formColumn),
-                              const SizedBox(width: 24),
-                              Expanded(flex: 2, child: sideColumn),
-                            ],
-                          );
-                        }
-                        return Column(
-                          children: [
-                            formColumn,
-                            const SizedBox(height: 24),
-                            sideColumn,
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        ElevatedButton(
-                          onPressed: _isSubmitting ? null : _submit,
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Kirim Laporan'),
-                        ),
-                        const SizedBox(width: 16),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).maybePop(),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                          ),
-                          child: const Text('Batalkan'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: content),
         ],
       ),
     );

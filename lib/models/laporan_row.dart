@@ -70,6 +70,23 @@ class LaporanRow {
       fotoPath: json['foto_url'],
       lat: (json['latitude'] as num?)?.toDouble(),
       lng: (json['longitude'] as num?)?.toDouble(),
+      tindakLanjuts: _parseTindakLanjuts(json),
     );
+  }
+
+  /// Backend Laravel bisa mengirim relasi tindak lanjut dengan nama key
+  /// yang berbeda-beda tergantung nama relasi di model. Dicoba beberapa
+  /// kemungkinan supaya tidak selalu jatuh ke list kosong.
+  static List<TindakLanjut> _parseTindakLanjuts(Map<String, dynamic> json) {
+    final raw = json['tindak_lanjut'] ??
+        json['tindak_lanjuts'] ??
+        json['riwayat_tindak_lanjut'] ??
+        json['riwayat'] ??
+        json['tindakLanjuts'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(TindakLanjut.fromJson)
+        .toList();
   }
 }
