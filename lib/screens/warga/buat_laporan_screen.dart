@@ -1,9 +1,19 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
+import '../../models/kategori_option.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/auth_storage.dart';
+import '../../utils/kategori_api.dart';
+import '../../utils/warga_laporan_api.dart';
 import '../../widgets/sidebar_menu.dart';
 
 /// Halaman "Buat Laporan Baru" — form warga untuk melaporkan
-/// kerusakan jalan, lengkap dengan foto bukti & lokasi GPS.
+/// kerusakan jalan, lengkap dengan foto bukti & lokasi di peta.
 class BuatLaporanScreen extends StatefulWidget {
   const BuatLaporanScreen({super.key});
 
@@ -11,28 +21,41 @@ class BuatLaporanScreen extends StatefulWidget {
   State<BuatLaporanScreen> createState() => _BuatLaporanScreenState();
 }
 
+const List<String> _kTingkatOptions = ['Ringan', 'Sedang', 'Berat'];
+
+/// Titik tengah peta default (Bandung) sebelum warga menandai lokasi asli.
+const LatLng _kDefaultPoint = LatLng(-6.9175, 107.6191);
+
 class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
   final _formKey = GlobalKey<FormState>();
   final _judulController = TextEditingController();
   final _alamatController = TextEditingController();
   final _deskripsiController = TextEditingController();
 
-  String _kategori = 'Jalan Berlubang';
-  String _tingkat = 'Ringan';
+  String _tingkat = _kTingkatOptions.first;
 
-  // TODO: ganti dengan koordinat asli dari layanan lokasi perangkat.
-  double? _latitude = -6.9147;
-  double? _longitude = 107.6098;
+  // --- Kategori: diambil dari API (/api/kategori) ---
+  List<KategoriOption> _kategoriOptions = [];
+  int? _kategoriId;
+  bool _loadingKategori = true;
+  String? _kategoriError;
 
-  final List<String> _kategoriOptions = const [
-    'Jalan Berlubang',
-    'Aspal Retak',
-    'Jalan Ambles',
-    'Jembatan Rusak',
-    'Lainnya',
-  ];
+  // --- Lokasi: peta interaktif, bisa ditandai lewat tap atau cari alamat ---
+  final MapController _mapController = MapController();
+  LatLng _selectedPoint = _kDefaultPoint;
+  bool _isMencariLokasi = false;
 
-  final List<String> _tingkatOptions = const ['Ringan', 'Sedang', 'Berat'];
+  // --- Foto bukti ---
+  Uint8List? _fotoBytes;
+  String? _fotoFileName;
+
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _muatKategori();
+  }
 
   @override
   void dispose() {
@@ -42,13 +65,172 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      // TODO: kirim data laporan ke backend / API.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Laporan berhasil dikirim')),
-      );
+  Future<void> _muatKategori() async {
+    setState(() {
+      _loadingKategori = true;
+      _kategoriError = null;
+    });
+    try {
+      final data = await KategoriApi.fetchAll();
+      if (!mounted) return;
+      setState(() => _kategoriOptions = data);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _kategoriError = e.toString());
+    } finally {
+      if (mounted) setState(() => _loadingKategori = false);
     }
+  }
+
+  void _onMapTap(LatLng point) {
+    setState(() => _selectedPoint = point);
+  }
+
+  /// Cari koordinat dari teks alamat lewat Nominatim (OpenStreetMap).
+  Future<void> _cariLokasiDariAlamat() async {
+    final query = _alamatController.text.trim();
+    if (query.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Isi alamat dulu sebelum mencari.')),
+      );
+      return;
+    }
+
+    setState(() => _isMencariLokasi = true);
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'format': 'json',
+        'limit': '1',
+        'countrycodes': 'id',
+      });
+
+      final response = await http.get(
+        uri,
+        headers: {'User-Agent': 'com.roadfix.app (warga-buat-laporan)'},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Gagal menghubungi layanan pencarian lokasi');
+      }
+
+      final List<dynamic> hasil = jsonDecode(response.body);
+      if (hasil.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lokasi tidak ditemukan, coba perjelas alamatnya.'),
+          ),
+        );
+        return;
+      }
+
+      final lat = double.parse(hasil.first['lat'] as String);
+      final lng = double.parse(hasil.first['lon'] as String);
+      final point = LatLng(lat, lng);
+
+      if (!mounted) return;
+      setState(() => _selectedPoint = point);
+      _mapController.move(point, 16);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal mencari lokasi. Periksa koneksi internet.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isMencariLokasi = false);
+    }
+  }
+
+  Future<void> _pilihFoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final f = result.files.single;
+    setState(() {
+      _fotoBytes = f.bytes;
+      _fotoFileName = f.name;
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_kategoriId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih kategori kerusakan dulu.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await WargaLaporanApi.create(
+        judul: _judulController.text.trim(),
+        kategoriId: _kategoriId!,
+        tingkatKerusakan: _tingkat,
+        deskripsi: _deskripsiController.text.trim(),
+        alamat: _alamatController.text.trim(),
+        lat: _selectedPoint.latitude,
+        lng: _selectedPoint.longitude,
+        fotoBytes: _fotoBytes,
+        fotoFileName: _fotoFileName,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Laporan berhasil dikirim')));
+      Navigator.of(context).pushReplacementNamed('/warga/riwayat-laporan');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal mengirim laporan: $e')));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.cardBorder),
+        ),
+        title: const Text(
+          'Keluar dari akun?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Keluar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    await AuthStorage.clearToken();
+    if (!mounted) return;
+    // Sesuaikan '/login' kalau nama route login publik di project-mu beda.
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   @override
@@ -56,9 +238,11 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SidebarMenu(
             activeItem: 'Buat Laporan',
+            onLogout: _logout,
             items: [
               SidebarMenuItem(
                 label: 'Buat Laporan',
@@ -68,14 +252,9 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
               SidebarMenuItem(
                 label: 'Riwayat Laporan Saya',
                 icon: Icons.history,
-                onTap: () => Navigator.of(context).pushReplacementNamed(
-                  '/warga/riwayat-laporan',
-                ),
-              ),
-              SidebarMenuItem(
-                label: 'Detail Laporan',
-                icon: Icons.description_outlined,
-                onTap: () {},
+                onTap: () => Navigator.of(
+                  context,
+                ).pushReplacementNamed('/warga/riwayat-laporan'),
               ),
             ],
           ),
@@ -143,8 +322,16 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
                     Row(
                       children: [
                         ElevatedButton(
-                          onPressed: _submit,
-                          child: const Text('Kirim Laporan'),
+                          onPressed: _isSubmitting ? null : _submit,
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Kirim Laporan'),
                         ),
                         const SizedBox(width: 16),
                         TextButton(
@@ -183,36 +370,59 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
           ),
           const SizedBox(height: 18),
           _FieldLabel('Kategori Kerusakan'),
-          DropdownButtonFormField<String>(
-            value: _kategori,
-            dropdownColor: AppColors.bgDark,
-            style: const TextStyle(color: AppColors.textPrimary),
-            items: _kategoriOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (v) => setState(() => _kategori = v ?? _kategori),
-          ),
+          _kategoriDropdown(),
           const SizedBox(height: 18),
           _FieldLabel('Tingkat Kerusakan'),
           DropdownButtonFormField<String>(
             value: _tingkat,
             dropdownColor: AppColors.bgDark,
             style: const TextStyle(color: AppColors.textPrimary),
-            items: _tingkatOptions
+            items: _kTingkatOptions
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
             onChanged: (v) => setState(() => _tingkat = v ?? _tingkat),
           ),
           const SizedBox(height: 18),
           _FieldLabel('Alamat / Titik Lokasi'),
-          TextFormField(
-            controller: _alamatController,
-            style: const TextStyle(color: AppColors.textPrimary),
-            decoration: const InputDecoration(
-              hintText: 'Jl. Merdeka No. 12, Kec. ...',
-            ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Alamat wajib diisi' : null,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _alamatController,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: const InputDecoration(
+                    hintText: 'Jl. Merdeka No. 12, Kec. ...',
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Alamat wajib diisi'
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isMencariLokasi ? null : _cariLokasiDariAlamat,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: _isMencariLokasi
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Icon(Icons.search, size: 20),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           _FieldLabel('Deskripsi'),
@@ -234,6 +444,67 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
     );
   }
 
+  Widget _kategoriDropdown() {
+    if (_loadingKategori) {
+      return Container(
+        width: double.infinity,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.bgDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_kategoriError != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.bgDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.redAccent),
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Gagal memuat kategori.',
+                style: TextStyle(color: Colors.redAccent, fontSize: 12),
+              ),
+            ),
+            TextButton(
+              onPressed: _muatKategori,
+              child: const Text('Coba Lagi', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return DropdownButtonFormField<int>(
+      value: _kategoriId,
+      dropdownColor: AppColors.bgDark,
+      style: const TextStyle(color: AppColors.textPrimary),
+      hint: const Text(
+        'Pilih kategori',
+        style: TextStyle(color: AppColors.textSecondary),
+      ),
+      items: _kategoriOptions
+          .map((k) => DropdownMenuItem(value: k.id, child: Text(k.nama)))
+          .toList(),
+      onChanged: (v) => setState(() => _kategoriId = v),
+      validator: (v) => v == null ? 'Kategori wajib dipilih' : null,
+    );
+  }
+
   Widget _buildSideColumn() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,12 +515,11 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
             children: [
               _FieldLabel('Foto Bukti'),
               GestureDetector(
-                onTap: () {
-                  // TODO: buka image_picker untuk ambil/pilih foto.
-                },
+                onTap: _pilihFoto,
                 child: Container(
                   height: 130,
                   width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: AppColors.bgDark,
                     borderRadius: BorderRadius.circular(8),
@@ -258,41 +528,73 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
                       style: BorderStyle.solid,
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.camera_alt_outlined,
-                          color: AppColors.textSecondary, size: 26),
-                      const SizedBox(height: 8),
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: const TextSpan(
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
+                  child: _fotoBytes != null
+                      ? Stack(
+                          fit: StackFit.expand,
                           children: [
-                            TextSpan(text: 'Tarik foto ke sini atau '),
-                            TextSpan(
-                              text: 'pilih file',
+                            Image.memory(_fotoBytes!, fit: BoxFit.cover),
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: GestureDetector(
+                                onTap: () => setState(() {
+                                  _fotoBytes = null;
+                                  _fotoFileName = null;
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.camera_alt_outlined,
+                              color: AppColors.textSecondary,
+                              size: 26,
+                            ),
+                            const SizedBox(height: 8),
+                            RichText(
+                              textAlign: TextAlign.center,
+                              text: const TextSpan(
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                                children: [
+                                  TextSpan(text: 'Klik untuk '),
+                                  TextSpan(
+                                    text: 'pilih file',
+                                    style: TextStyle(
+                                      color: AppColors.gold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'JPG/PNG, maks. 5MB',
                               style: TextStyle(
-                                color: AppColors.gold,
-                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                                fontSize: 10,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'JPG/PNG, maks. 5MB',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -303,24 +605,58 @@ class _BuatLaporanScreenState extends State<BuatLaporanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _FieldLabel('Pratinjau Lokasi'),
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.bgDark,
-                  borderRadius: BorderRadius.circular(8),
+              _FieldLabel('Titik Lokasi'),
+              const SizedBox(height: 4),
+              const Text(
+                'Ketuk peta atau pakai tombol cari di kolom alamat.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 180,
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _selectedPoint,
+                      initialZoom: 14,
+                      onTap: (tapPosition, point) => _onMapTap(point),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.roadfix.app',
+                        maxZoom: 19,
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _selectedPoint,
+                            width: 36,
+                            height: 36,
+                            child: const Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 36,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const RichAttributionWidget(
+                        attributions: [
+                          TextSourceAttribution('© OpenStreetMap contributors'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                alignment: Alignment.center,
-                // TODO: ganti dengan widget peta (flutter_map / google_maps_flutter).
-                child: const Icon(Icons.location_on,
-                    color: AppColors.gold, size: 34),
               ),
               const SizedBox(height: 8),
               Text(
-                _latitude != null && _longitude != null
-                    ? '$_latitude, $_longitude (otomatis dari GPS perangkat)'
-                    : 'Lokasi belum terdeteksi',
+                '${_selectedPoint.latitude.toStringAsFixed(6)}, '
+                '${_selectedPoint.longitude.toStringAsFixed(6)}',
                 style: const TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 11,

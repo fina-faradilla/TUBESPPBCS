@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-import '../../services/auth_service.dart';
+import 'package:http/http.dart' as http;
+import '../../utils/api.dart';
+import '../../utils/auth_storage.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -16,85 +18,152 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController konfirmasiController = TextEditingController();
 
-  final AuthService _authService = AuthService();
-
   bool hidePassword = true;
   bool hideKonfirmasi = true;
-  bool isLoading = false;
+  bool _isLoading = false;
 
   static const Color primaryColor = Color(0xFFF5B41B);
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
 
-  Future<void> _handleRegister() async {
-    // Basic client-side checks before hitting the API.
-    if (namaController.text.trim().isEmpty ||
-        noHpController.text.trim().isEmpty ||
-        emailController.text.trim().isEmpty ||
-        passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mohon lengkapi semua kolom.")),
-      );
+  Future<void> _register() async {
+    final nama = namaController.text.trim();
+    final noHp = noHpController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final konfirmasi = konfirmasiController.text;
+
+    if (nama.isEmpty || noHp.isEmpty || email.isEmpty || password.isEmpty) {
+      _tampilkanPesan('Semua field wajib diisi.');
       return;
     }
 
-    if (passwordController.text != konfirmasiController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Konfirmasi password tidak cocok.")),
-      );
+    if (password != konfirmasi) {
+      _tampilkanPesan('Password dan konfirmasi password tidak cocok.');
       return;
     }
 
-    setState(() => isLoading = true);
+    if (password.length < 8) {
+      _tampilkanPesan('Password minimal 8 karakter.');
+      return;
+    }
 
-    final result = await _authService.register(
-      name: namaController.text.trim(),
-      email: emailController.text.trim(),
-      noHp: noHpController.text.trim(),
-      password: passwordController.text,
-      passwordConfirmation: konfirmasiController.text,
-    );
+    setState(() => _isLoading = true);
 
+    try {
+      final response = await http
+          .post(
+            Uri.parse(Api.register),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'name': nama,
+              'no_hp': noHp,
+              'email': email,
+              'password': password,
+              'password_confirmation': konfirmasi,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      final body = _tryDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = (body['data'] is Map<String, dynamic>)
+            ? body['data'] as Map<String, dynamic>
+            : body;
+
+        final token = data['access_token'] ?? data['token'];
+        if (token == null) {
+          _tampilkanPesan(
+            'Registrasi berhasil tapi token tidak ditemukan. Silakan login.',
+          );
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(context, '/login');
+          return;
+        }
+
+        await AuthStorage.saveToken(token.toString());
+
+        final user = (data['user'] is Map<String, dynamic>)
+            ? data['user'] as Map<String, dynamic>
+            : <String, dynamic>{};
+
+        // Backend mengirim role_id (integer): 1 = Admin, 2 = Warga.
+        // Registrasi mandiri seharusnya selalu menghasilkan akun Warga,
+        // tapi kita tetap cek role_id dari server sebagai sumber kebenaran.
+        const int kAdminRoleId = 1;
+        final roleId = user['role_id'];
+        final String destination = roleId == kAdminRoleId
+            ? '/admin/dashboard'
+            : '/warga/buat-laporan';
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, destination);
+        return;
+      }
+
+      if (response.statusCode == 422) {
+        final errors = body['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = (errors.values.first as List).first;
+          _tampilkanPesan(firstError.toString());
+        } else {
+          _tampilkanPesan(body['message']?.toString() ?? 'Data tidak valid.');
+        }
+        return;
+      }
+
+      _tampilkanPesan(
+        body['message']?.toString() ??
+            'Terjadi kesalahan pada server (${response.statusCode}).',
+      );
+    } catch (_) {
+      _tampilkanPesan(
+        'Tidak bisa menghubungi server. Periksa koneksi atau alamat API.',
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Map<String, dynamic> _tryDecode(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  void _tampilkanPesan(String pesan) {
     if (!mounted) return;
-    setState(() => isLoading = false);
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Registrasi berhasil, silakan masuk.")),
-      );
-
-      Navigator.pushReplacementNamed(context, "/login");
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? "Registrasi gagal.")),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(pesan), backgroundColor: Colors.red.shade700),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(25),
-
           child: Container(
             width: MediaQuery.of(context).size.width < 480
                 ? double.infinity
                 : 430,
             padding: const EdgeInsets.all(28),
-
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(20),
             ),
-
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 const Text(
                   "AUTENTIKASI",
                   style: TextStyle(
@@ -103,9 +172,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     letterSpacing: 1,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 const Text(
                   "DAFTAR AKUN",
                   style: TextStyle(
@@ -114,19 +181,12 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 const Text(
                   "Buat akun RoadFix untuk mulai melaporkan kerusakan jalan dan memantau status laporan.",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    height: 1.5,
-                  ),
+                  style: TextStyle(color: Colors.white70, height: 1.5),
                 ),
-
                 const SizedBox(height: 30),
-
                 const Text(
                   "Nama Lengkap",
                   style: TextStyle(
@@ -134,18 +194,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: namaController,
+                  enabled: !_isLoading,
                   style: const TextStyle(color: Colors.white),
-
                   decoration: InputDecoration(
                     hintText: "Masukkan nama lengkap",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: backgroundColor,
                     border: OutlineInputBorder(
@@ -153,9 +209,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 const Text(
                   "No. HP",
                   style: TextStyle(
@@ -163,19 +217,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: noHpController,
+                  enabled: !_isLoading,
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(color: Colors.white),
-
                   decoration: InputDecoration(
                     hintText: "08xxxxxxxxxx",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: backgroundColor,
                     border: OutlineInputBorder(
@@ -183,9 +233,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 const Text(
                   "Email",
                   style: TextStyle(
@@ -193,19 +241,15 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: emailController,
+                  enabled: !_isLoading,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.white),
-
                   decoration: InputDecoration(
                     hintText: "nama@email.com",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: backgroundColor,
                     border: OutlineInputBorder(
@@ -213,9 +257,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 const Text(
                   "Password",
                   style: TextStyle(
@@ -223,27 +265,20 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: passwordController,
                   obscureText: hidePassword,
+                  enabled: !_isLoading,
                   style: const TextStyle(color: Colors.white),
-
                   decoration: InputDecoration(
-                    hintText: "••••••••",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintText: "Min. 8 karakter",
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: backgroundColor,
-
                     suffixIcon: IconButton(
                       icon: Icon(
-                        hidePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        hidePassword ? Icons.visibility_off : Icons.visibility,
                         color: Colors.white70,
                       ),
                       onPressed: () {
@@ -252,15 +287,12 @@ class _RegisterPageState extends State<RegisterPage> {
                         });
                       },
                     ),
-
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 const Text(
                   "Konfirmasi Password",
                   style: TextStyle(
@@ -268,22 +300,17 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: konfirmasiController,
                   obscureText: hideKonfirmasi,
+                  enabled: !_isLoading,
                   style: const TextStyle(color: Colors.white),
-
                   decoration: InputDecoration(
                     hintText: "••••••••",
-                    hintStyle: const TextStyle(
-                      color: Colors.white38,
-                    ),
+                    hintStyle: const TextStyle(color: Colors.white38),
                     filled: true,
                     fillColor: backgroundColor,
-
                     suffixIcon: IconButton(
                       icon: Icon(
                         hideKonfirmasi
@@ -297,28 +324,22 @@ class _RegisterPageState extends State<RegisterPage> {
                         });
                       },
                     ),
-
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.black,
                     ),
-
-                    onPressed: isLoading ? null : _handleRegister,
-
-                    child: isLoading
+                    onPressed: _isLoading ? null : _register,
+                    child: _isLoading
                         ? const SizedBox(
                             width: 22,
                             height: 22,
@@ -329,32 +350,22 @@ class _RegisterPageState extends State<RegisterPage> {
                           )
                         : const Text(
                             "Daftar",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-                                Center(
+                Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     children: [
-
                       const Text(
                         "Sudah punya akun? ",
-                        style: TextStyle(
-                          color: Colors.white70,
-                        ),
+                        style: TextStyle(color: Colors.white70),
                       ),
-
                       GestureDetector(
                         onTap: () {
-                          Navigator.pushReplacementNamed(
-                            context,
-                            "/login",
-                          );
+                          Navigator.pushReplacementNamed(context, "/login");
                         },
                         child: const Text(
                           "Masuk di sini",
@@ -367,9 +378,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 Center(
                   child: TextButton.icon(
                     onPressed: () {
@@ -382,13 +391,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     label: const Text(
                       "Kembali ke Beranda",
-                      style: TextStyle(
-                        color: Colors.white70,
-                      ),
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                 ),
-
               ],
             ),
           ),

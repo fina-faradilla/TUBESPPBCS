@@ -1,9 +1,7 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../utils/api.dart';
+import '../utils/auth_storage.dart';
 
 class AuthService {
   /// LOGIN
@@ -13,35 +11,15 @@ class AuthService {
   }) async {
     final response = await http.post(
       Uri.parse(Api.login),
-      headers: {
-        'Accept': 'application/json',
-      },
-      body: {
-        'email': email,
-        'password': password,
-      },
+      headers: {'Accept': 'application/json'},
+      body: {'email': email, 'password': password},
     );
-
     final data = jsonDecode(response.body);
-
     if (response.statusCode == 200) {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('token', data['token']);
-      await prefs.setInt('role_id', data['user']['role_id']);
-      await prefs.setString('name', data['user']['name']);
-      await prefs.setString('email', data['user']['email']);
-
-      return {
-        'success': true,
-        'data': data,
-      };
+      await AuthStorage.saveToken(data['token'].toString());
+      return {'success': true, 'data': data};
     }
-
-    return {
-      'success': false,
-      'message': data['message'],
-    };
+    return {'success': false, 'message': data['message']};
   }
 
   /// REGISTER
@@ -54,9 +32,7 @@ class AuthService {
   }) async {
     final response = await http.post(
       Uri.parse(Api.register),
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers: {'Accept': 'application/json'},
       body: {
         'name': name,
         'email': email,
@@ -65,35 +41,17 @@ class AuthService {
         'password_confirmation': passwordConfirmation,
       },
     );
-
     final data = jsonDecode(response.body);
-
     if (response.statusCode == 201) {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('token', data['token']);
-      await prefs.setInt('role_id', data['user']['role_id']);
-      await prefs.setString('name', data['user']['name']);
-      await prefs.setString('email', data['user']['email']);
-
-      return {
-        'success': true,
-        'data': data,
-      };
+      await AuthStorage.saveToken(data['token'].toString());
+      return {'success': true, 'data': data};
     }
-
-    return {
-      'success': false,
-      'message': data['message'],
-    };
+    return {'success': false, 'message': data['message']};
   }
 
   /// LOGOUT
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final token = prefs.getString('token');
-
+    final token = await AuthStorage.getToken();
     if (token != null) {
       await http.post(
         Uri.parse(Api.logout),
@@ -103,7 +61,6 @@ class AuthService {
         },
       );
     }
-
-    await prefs.clear();
+    await AuthStorage.clearToken();
   }
 }

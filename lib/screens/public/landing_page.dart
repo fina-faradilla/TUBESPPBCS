@@ -21,7 +21,8 @@ class LandingPage extends StatelessWidget {
         titleSpacing: 16,
         title: Builder(
           builder: (context) {
-            final isMobile = MediaQuery.of(context).size.width < mobileBreakpoint;
+            final isMobile =
+                MediaQuery.of(context).size.width < mobileBreakpoint;
 
             return Row(
               children: [
@@ -62,10 +63,7 @@ class LandingPage extends StatelessWidget {
                         const Text(
                           "Sistem Pelaporan Jalan Rusak",
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 11, color: Colors.white70),
                         ),
                     ],
                   ),
@@ -79,10 +77,7 @@ class LandingPage extends StatelessWidget {
             onPressed: () {
               Navigator.pushNamed(context, "/login");
             },
-            child: const Text(
-              "Masuk",
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text("Masuk", style: TextStyle(color: Colors.white)),
           ),
           const SizedBox(width: 6),
           Padding(
@@ -208,8 +203,7 @@ class LandingPage extends StatelessWidget {
                         ],
                       ),
                     ),
-
-const SizedBox(height: 40),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -228,10 +222,7 @@ class _HeroContent extends StatelessWidget {
   final bool isMobile;
   final double heroFontSize;
 
-  const _HeroContent({
-    required this.isMobile,
-    required this.heroFontSize,
-  });
+  const _HeroContent({required this.isMobile, required this.heroFontSize});
 
   @override
   Widget build(BuildContext context) {
@@ -267,11 +258,7 @@ class _HeroContent extends StatelessWidget {
           "RoadFix membantu masyarakat melaporkan jalan rusak "
           "kepada instansi terkait secara cepat. Unggah lokasi dan foto "
           "kerusakan, kemudian pantau status laporan hingga selesai diperbaiki.",
-          style: TextStyle(
-            color: Colors.white70,
-            height: 1.5,
-            fontSize: 15,
-          ),
+          style: TextStyle(color: Colors.white70, height: 1.5, fontSize: 15),
         ),
 
         const SizedBox(height: 30),
@@ -403,20 +390,14 @@ class StepCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: .18),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Text(
               number,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 20),
@@ -441,11 +422,7 @@ class StepCard extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.bottomRight,
-            child: Icon(
-              Icons.arrow_forward_rounded,
-              color: color,
-              size: 26,
-            ),
+            child: Icon(Icons.arrow_forward_rounded, color: color, size: 26),
           ),
         ],
       ),

@@ -4,11 +4,7 @@ import '../theme/app_colors.dart';
 /// Daftar status laporan yang valid, urut sesuai alur proses.
 /// Disamakan dengan enum status pada versi web Laravel (RoadFix):
 /// Menunggu Verifikasi -> Diproses -> Selesai.
-const List<String> kStatusOptions = [
-  'Menunggu Verifikasi',
-  'Diproses',
-  'Selesai',
-];
+const List<String> kStatusOptions = ['Menunggu', 'Diproses', 'Selesai'];
 
 /// Daftar kategori kerusakan yang tersedia.
 const List<String> kKategoriOptions = [
@@ -20,16 +16,12 @@ const List<String> kKategoriOptions = [
 ];
 
 /// Daftar tingkat kerusakan yang tersedia.
-const List<String> kTingkatKerusakanOptions = [
-  'Ringan',
-  'Sedang',
-  'Berat',
-];
+const List<String> kTingkatKerusakanOptions = ['Ringan', 'Sedang', 'Berat'];
 
 /// Mengembalikan warna badge sesuai status laporan.
 Color statusColorFor(String status) {
   switch (status) {
-    case 'Menunggu Verifikasi':
+    case 'Menunggu':
       return AppColors.gold;
     case 'Diproses':
       return AppColors.orange;
@@ -41,8 +33,18 @@ Color statusColorFor(String status) {
 }
 
 const List<String> _bulanPendek = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-  'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
 ];
 
 /// Format tanggal menjadi "dd MMM yyyy" (mis. "07 Jul 2026") tanpa
@@ -56,8 +58,18 @@ String formatTanggal(DateTime date) {
 /// Format tanggal panjang "dd MMMM yyyy" (mis. "13 July 2026") dipakai di
 /// halaman Detail Laporan, konsisten dengan versi Laravel.
 const List<String> _bulanPanjang = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 String formatTanggalPanjang(DateTime date) {

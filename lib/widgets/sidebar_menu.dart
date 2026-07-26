@@ -20,16 +20,23 @@ class SidebarMenu extends StatelessWidget {
   final String activeItem;
   final List<SidebarMenuItem> items;
 
+  /// Kalau diisi, tombol "Keluar" otomatis muncul di bagian bawah sidebar
+  /// — cukup pasang sekali di sini, tidak perlu ditambahkan manual di
+  /// setiap screen yang pakai SidebarMenu.
+  final VoidCallback? onLogout;
+
   const SidebarMenu({
     super.key,
     required this.activeItem,
     required this.items,
+    this.onLogout,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 240,
+      height: double.infinity,
       color: AppColors.sidebarBg,
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
@@ -39,8 +46,16 @@ class SidebarMenu extends StatelessWidget {
           const SizedBox(height: 28),
           _sectionLabel('PORTAL WARGA'),
           for (final item in items)
-            _item(item.label, item.icon, item.onTap,
-                activeItem == item.label),
+            _item(item.label, item.icon, item.onTap, activeItem == item.label),
+          if (onLogout != null) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Divider(color: AppColors.cardBorder, height: 1),
+            ),
+            const SizedBox(height: 8),
+            _logoutItem(onLogout!),
+          ],
         ],
       ),
     );
@@ -83,10 +98,7 @@ class SidebarMenu extends StatelessWidget {
                 ),
                 Text(
                   'LAPOR JALAN RUSAK',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 9,
-                  ),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 9),
                 ),
               ],
             ),
@@ -111,8 +123,7 @@ class SidebarMenu extends StatelessWidget {
     );
   }
 
-  Widget _item(
-      String label, IconData icon, VoidCallback onTap, bool active) {
+  Widget _item(String label, IconData icon, VoidCallback onTap, bool active) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -133,11 +144,30 @@ class SidebarMenu extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color:
-                    active ? AppColors.onGold : AppColors.textSecondary,
+                color: active ? AppColors.onGold : AppColors.textSecondary,
                 fontSize: 13,
                 fontWeight: active ? FontWeight.w600 : FontWeight.normal,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _logoutItem(VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: const Row(
+          children: [
+            Icon(Icons.logout, size: 16, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text(
+              'Keluar',
+              style: TextStyle(color: Colors.redAccent, fontSize: 13),
             ),
           ],
         ),

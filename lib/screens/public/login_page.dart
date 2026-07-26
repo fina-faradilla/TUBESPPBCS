@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-import '../../services/auth_service.dart';
+import 'package:http/http.dart' as http;
+import '../../utils/api.dart';
+import '../../utils/auth_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,48 +15,113 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  final AuthService _authService = AuthService();
-
   bool rememberMe = false;
   bool obscurePassword = true;
-  bool isLoading = false;
+  bool _isLoading = false;
 
   static const Color primaryColor = Color(0xFFF5B41B);
   static const Color backgroundColor = Color(0xFF161B22);
   static const Color cardColor = Color(0xFF1F2633);
 
-  Future<void> _handleLogin() async {
-    if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mohon isi email dan password.")),
-      );
+  // role_id 1 = Admin -> dashboard admin.
+  // role_id lainnya (2 = Warga) -> portal warga.
+  static const int kAdminRoleId = 1;
+
+  Future<void> _login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _tampilkanPesan('Email dan kata sandi wajib diisi.');
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => _isLoading = true);
 
-    final result = await _authService.login(
-      email: emailController.text.trim(),
-      password: passwordController.text,
-    );
+    try {
+      final response = await http
+          .post(
+            Uri.parse(Api.login),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 15));
 
-    if (!mounted) return;
-    setState(() => isLoading = false);
+      final body = _tryDecode(response.body);
 
-    if (result['success'] == true) {
-      final int roleId = result['data']['user']['role_id'];
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Sesuaikan kalau Laravel-mu membungkus response di "data".
+        final data = (body['data'] is Map<String, dynamic>)
+            ? body['data'] as Map<String, dynamic>
+            : body;
 
-      // role_id 1 = Admin -> dashboard admin.
-      // role_id lainnya (2 = Warga) -> portal warga.
-      final String destination =
-          roleId == 1 ? "/admin/dashboard" : "/warga/buat-laporan";
+        final token = data['access_token'] ?? data['token'];
+        if (token == null) {
+          _tampilkanPesan('Login berhasil tapi token tidak ditemukan.');
+          return;
+        }
 
-      Navigator.pushReplacementNamed(context, destination);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? "Login gagal.")),
+        final user = (data['user'] is Map<String, dynamic>)
+            ? data['user'] as Map<String, dynamic>
+            : <String, dynamic>{};
+
+        await AuthStorage.saveToken(token.toString());
+
+        final roleId = user['role_id'];
+        final String destination =
+            roleId == kAdminRoleId ? '/admin/dashboard' : '/warga/buat-laporan';
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, destination);
+        return;
+      }
+
+      if (response.statusCode == 422) {
+        final errors = body['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = (errors.values.first as List).first;
+          _tampilkanPesan(firstError.toString());
+        } else {
+          _tampilkanPesan(body['message']?.toString() ?? 'Data tidak valid.');
+        }
+        return;
+      }
+
+      if (response.statusCode == 401) {
+        _tampilkanPesan('Email atau kata sandi salah.');
+        return;
+      }
+
+      _tampilkanPesan(
+        body['message']?.toString() ??
+            'Terjadi kesalahan pada server (${response.statusCode}).',
       );
+    } catch (_) {
+      _tampilkanPesan(
+        'Tidak bisa menghubungi server. Periksa koneksi atau alamat API.',
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Map<String, dynamic> _tryDecode(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  void _tampilkanPesan(String pesan) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(pesan), backgroundColor: Colors.red.shade700),
+    );
   }
 
   @override
@@ -121,6 +188,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 TextField(
                   controller: emailController,
+                  enabled: !_isLoading,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.white),
 
@@ -152,6 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                 TextField(
                   controller: passwordController,
                   obscureText: obscurePassword,
+                  enabled: !_isLoading,
                   style: const TextStyle(color: Colors.white),
 
                   decoration: InputDecoration(
@@ -227,9 +296,9 @@ class _LoginPageState extends State<LoginPage> {
                       foregroundColor: Colors.black,
                     ),
 
-                    onPressed: isLoading ? null : _handleLogin,
+                    onPressed: _isLoading ? null : _login,
 
-                    child: isLoading
+                    child: _isLoading
                         ? const SizedBox(
                             width: 22,
                             height: 22,
@@ -240,9 +309,7 @@ class _LoginPageState extends State<LoginPage> {
                           )
                         : const Text(
                             "Masuk",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
