@@ -22,6 +22,57 @@ class LaporanController extends ChangeNotifier {
   int get selesai => _rows.where((r) => r.status == 'Selesai').length;
   List<LaporanRow> get terbaru => _rows.take(4).toList();
 
+  static const List<String> _bulanPendek = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+  ];
+
+  /// Jumlah laporan per bulan untuk 6 bulan terakhir (termasuk bulan
+  /// berjalan), dihitung dari tanggal laporan yang sebenarnya di database —
+  /// bukan lagi angka contoh/dummy.
+  List<int> get trenBulananValues => _trenBulanan().$1;
+
+  /// Label bulan (mis. "Feb", "Mar", ...) yang berpasangan dengan
+  /// [trenBulananValues].
+  List<String> get trenBulananLabels => _trenBulanan().$2;
+
+  (List<int>, List<String>) _trenBulanan() {
+    final now = DateTime.now();
+    // 6 bulan terakhir, dari yang paling lama ke bulan berjalan.
+    final bulanTarget = List.generate(
+      6,
+      (i) => DateTime(now.year, now.month - (5 - i)),
+    );
+
+    final counts = List<int>.filled(6, 0);
+    for (final row in _rows) {
+      final tgl = _parseTanggal(row.tanggal);
+      if (tgl == null) continue;
+      for (int i = 0; i < bulanTarget.length; i++) {
+        if (tgl.year == bulanTarget[i].year &&
+            tgl.month == bulanTarget[i].month) {
+          counts[i]++;
+          break;
+        }
+      }
+    }
+
+    final labels = bulanTarget.map((d) => _bulanPendek[d.month - 1]).toList();
+    return (counts, labels);
+  }
+
+  /// Parse format tanggal dari backend: "dd MMM yyyy" (mis. "07 Jul 2026"),
+  /// sama seperti yang dipakai di [status_utils.formatTanggal].
+  DateTime? _parseTanggal(String tanggal) {
+    final parts = tanggal.trim().split(RegExp(r'\s+'));
+    if (parts.length != 3) return null;
+    final day = int.tryParse(parts[0]);
+    final monthIndex = _bulanPendek.indexOf(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || monthIndex == -1 || year == null) return null;
+    return DateTime(year, monthIndex + 1, day);
+  }
+
   LaporanRow? getById(String id) {
     for (final r in _rows) {
       if (r.id == id) return r;

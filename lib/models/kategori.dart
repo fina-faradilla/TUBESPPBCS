@@ -1,7 +1,7 @@
-/// Meniru `App\Models\Kategori` pada versi web Laravel (master data
+/// Meniru `App\Models\KategoriKerusakan` di backend Laravel (master data
 /// kategori kerusakan yang dipakai saat pelapor membuat laporan baru).
 class Kategori {
-  final String id;
+  final int id;
   final String nama;
   final String deskripsi;
 
@@ -11,8 +11,21 @@ class Kategori {
     this.deskripsi = '-',
   });
 
+  /// Kode tampilan bergaya "KTG-0001" supaya konsisten dengan desain UI
+  /// yang sudah ada, walau di database ID-nya cuma angka biasa.
+  String get kodeTampilan => 'KTG-${id.toString().padLeft(4, '0')}';
+
+  factory Kategori.fromJson(Map<String, dynamic> json) {
+    final rawDeskripsi = json['deskripsi']?.toString().trim();
+    return Kategori(
+      id: json['id'] is int ? json['id'] as int : int.parse(json['id'].toString()),
+      nama: json['nama_kategori']?.toString() ?? '-',
+      deskripsi: (rawDeskripsi == null || rawDeskripsi.isEmpty) ? '-' : rawDeskripsi,
+    );
+  }
+
   Kategori copyWith({
-    String? id,
+    int? id,
     String? nama,
     String? deskripsi,
   }) {

@@ -9,7 +9,10 @@ class BarTrendChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxVal = values.reduce((a, b) => a > b ? a : b);
+    final rawMax = values.isEmpty
+        ? 0.0
+        : values.reduce((a, b) => a > b ? a : b);
+    final maxVal = rawMax <= 0 ? 1.0 : rawMax;
     return LayoutBuilder(
       builder: (context, constraints) {
         return Row(

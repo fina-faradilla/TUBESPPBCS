@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../utils/api.dart';
-import '../../utils/auth_storage.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -71,37 +70,18 @@ class _RegisterPageState extends State<RegisterPage> {
       final body = _tryDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = (body['data'] is Map<String, dynamic>)
-            ? body['data'] as Map<String, dynamic>
-            : body;
-
-        final token = data['access_token'] ?? data['token'];
-        if (token == null) {
-          _tampilkanPesan(
-            'Registrasi berhasil tapi token tidak ditemukan. Silakan login.',
-          );
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/login');
-          return;
-        }
-
-        await AuthStorage.saveToken(token.toString());
-
-        final user = (data['user'] is Map<String, dynamic>)
-            ? data['user'] as Map<String, dynamic>
-            : <String, dynamic>{};
-
-        // Backend mengirim role_id (integer): 1 = Admin, 2 = Warga.
-        // Registrasi mandiri seharusnya selalu menghasilkan akun Warga,
-        // tapi kita tetap cek role_id dari server sebagai sumber kebenaran.
-        const int kAdminRoleId = 1;
-        final roleId = user['role_id'];
-        final String destination = roleId == kAdminRoleId
-            ? '/admin/dashboard'
-            : '/warga/buat-laporan';
-
+        // Registrasi hanya membuat akun, bukan langsung mensesikan
+        // pengguna. Jangan simpan token & jangan langsung masuk ke portal
+        // warga — arahkan ke halaman login supaya pengguna baru login
+        // dulu, baru diarahkan ke portal warga setelah login berhasil.
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, destination);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registrasi berhasil. Silakan masuk.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/login');
         return;
       }
 

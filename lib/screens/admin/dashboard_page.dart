@@ -10,12 +10,27 @@ import '../../widgets/laporan_terbaru_item.dart';
 import '../../utils/responsive.dart';
 
 /// Route: '/admin/dashboard'
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
   @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  final LaporanController controller = LaporanController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    // Muat data laporan asli dari database saat dashboard dibuka, supaya
+    // statistik & grafik tidak kosong kalau pengguna belum pernah membuka
+    // halaman "Kelola Laporan" sebelumnya.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.muatData());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = LaporanController.instance;
     final bool mobile = isMobileWidth(context);
     final double pagePad = mobile ? 16 : 28;
 
@@ -99,12 +114,20 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const SizedBox(
+              SizedBox(
                 height: 220,
-                child: BarTrendChart(
-                  values: [58, 66, 40, 82, 74, 96],
-                  labels: ['Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul'],
-                ),
+                child: (controller.isLoading && controller.total == 0)
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.gold,
+                        ),
+                      )
+                    : BarTrendChart(
+                        values: controller.trenBulananValues
+                            .map((v) => v.toDouble())
+                            .toList(),
+                        labels: controller.trenBulananLabels,
+                      ),
               ),
             ],
           ),
